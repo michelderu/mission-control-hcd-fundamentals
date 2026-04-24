@@ -48,13 +48,15 @@ chmod +x preflight.sh
 
 ---
 
-## 1️⃣ Create the KinD cluster
+## 1️⃣ Create a KinD cluster
+
+We create a *named* kind cluster so it does not interfere with existing clusters.
 
 ```bash
 kind create cluster --name mc --config kind-cluster.yaml
 ```
 
-Use the new context:
+Use the new context (which is `kind-mc` when the cluster name is `mc`):
 
 ```bash
 kubectl config use-context kind-mc
