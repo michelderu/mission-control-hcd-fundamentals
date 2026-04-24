@@ -1,0 +1,188 @@
+# Local overrides for `helm install|upgrade ... -f mc-values.yaml -f mc-overrides.yaml`
+#
+# Assumes Helm release name `mission-control` in namespace `mission-control`.
+# If you use another release name, replace `mission-control-minio` in secretKeyRef
+# and in `loki.loki.storage.s3.endpoint` accordingly (`<release>-minio.<namespace>.svc.cluster.local:9000`).
+#
+# Helm replaces whole YAML lists on merge: never specify only part of `schemaConfig.configs` or
+# `loki.*.extraArgs` here without the full entries you need (see loki schema + extraArgs below).
+
+dex:
+  config:
+    enablePasswordDB: true
+    staticPasswords:
+      - email: "mission-control@example.com"
+        hash: "$2y$10$u/B82hcN/2fY1Wtz4YEW9.QblqcAfSWRsvbefvQVlFq8AAuMY7VU2"
+        username: admin
+
+mimir:
+  minio:
+    enabled: true
+    buckets:
+      - name: mimir-tsdb
+        policy: none
+        purge: false
+      - name: mimir-ruler
+        policy: none
+        purge: false
+      - name: loki-chunks
+        policy: none
+        purge: false
+      - name: loki-ruler
+        policy: none
+        purge: false
+      - name: loki-admin
+        policy: none
+        purge: false
+
+loki:
+  loki:
+    storage:
+      type: s3
+      bucketNames:
+        chunks: loki-chunks
+        ruler: loki-ruler
+        admin: loki-admin
+      s3:
+        endpoint: mission-control-minio.mission-control.svc.cluster.local:9000
+        accessKeyId: "${ACCESSKEYID}"
+        secretAccessKey: "${SECRETACCESSKEY}"
+        insecure: true
+        region: us-east-1
+        s3ForcePathStyle: true
+    schemaConfig:
+      configs:
+        - from: "2025-06-13"
+          object_store: s3
+          store: tsdb
+          schema: v13
+          index:
+            period: 24h
+            prefix: mc_loki_
+    compactor:
+      retention_enabled: true
+      working_directory: "/var/loki/retention"
+      delete_request_store: s3
+  read:
+    extraEnv:
+      - name: ACCESSKEYID
+        valueFrom:
+          secretKeyRef:
+            name: mission-control-minio
+            key: rootUser
+      - name: SECRETACCESSKEY
+        valueFrom:
+          secretKeyRef:
+            name: mission-control-minio
+            key: rootPassword
+    extraArgs:
+      - "-config.expand-env=true"
+      - -boltdb.shipper.index-gateway-client.grpc.tls-enabled=true
+      - -boltdb.shipper.index-gateway-client.grpc.tls-ca-path=/tmp/certs/loki/ca.crt
+      - -boltdb.shipper.index-gateway-client.grpc.tls-server-name=loki-gateway
+      - -compactor.grpc-client.tls-enabled=true
+      - -compactor.grpc-client.tls-ca-path=/tmp/certs/loki/ca.crt
+      - -compactor.grpc-client.tls-server-name=loki-gateway
+      - -frontend.grpc-client-config.tls-enabled=true
+      - -frontend.grpc-client-config.tls-ca-path=/tmp/certs/loki/ca.crt
+      - -frontend.grpc-client-config.tls-server-name=loki-gateway
+      - -ingester.client.tls-enabled=true
+      - -ingester.client.tls-ca-path=/tmp/certs/loki/ca.crt
+      - -ingester.client.tls-server-name=loki-gateway
+      - -querier.frontend-grpc-client.tls-enabled=true
+      - -querier.frontend-grpc-client.tls-ca-path=/tmp/certs/loki/ca.crt
+      - -querier.frontend-grpc-client.tls-server-name=loki-gateway
+      - -querier.scheduler-grpc-client.tls-enabled=true
+      - -querier.scheduler-grpc-client.tls-ca-path=/tmp/certs/loki/ca.crt
+      - -querier.scheduler-grpc-client.tls-server-name=loki-gateway
+      - -query-scheduler.grpc-client-config.tls-enabled=true
+      - -query-scheduler.grpc-client-config.tls-ca-path=/tmp/certs/loki/ca.crt
+      - -query-scheduler.grpc-client-config.tls-server-name=loki-gateway
+      - -ruler.client.tls-enabled=true
+      - -ruler.client.tls-ca-path=/tmp/certs/loki/ca.crt
+      - -ruler.client.tls-server-name=loki-gateway
+      - -tsdb.shipper.index-gateway-client.grpc.tls-enabled=true
+      - -tsdb.shipper.index-gateway-client.grpc.tls-ca-path=/tmp/certs/loki/ca.crt
+      - -tsdb.shipper.index-gateway-client.grpc.tls-server-name=loki-gateway
+  write:
+    extraEnv:
+      - name: ACCESSKEYID
+        valueFrom:
+          secretKeyRef:
+            name: mission-control-minio
+            key: rootUser
+      - name: SECRETACCESSKEY
+        valueFrom:
+          secretKeyRef:
+            name: mission-control-minio
+            key: rootPassword
+    extraArgs:
+      - "-config.expand-env=true"
+      - -boltdb.shipper.index-gateway-client.grpc.tls-enabled=true
+      - -boltdb.shipper.index-gateway-client.grpc.tls-ca-path=/tmp/certs/loki/ca.crt
+      - -boltdb.shipper.index-gateway-client.grpc.tls-server-name=loki-gateway
+      - -compactor.grpc-client.tls-enabled=true
+      - -compactor.grpc-client.tls-ca-path=/tmp/certs/loki/ca.crt
+      - -compactor.grpc-client.tls-server-name=loki-gateway
+      - -frontend.grpc-client-config.tls-enabled=true
+      - -frontend.grpc-client-config.tls-ca-path=/tmp/certs/loki/ca.crt
+      - -frontend.grpc-client-config.tls-server-name=loki-gateway
+      - -ingester.client.tls-enabled=true
+      - -ingester.client.tls-ca-path=/tmp/certs/loki/ca.crt
+      - -ingester.client.tls-server-name=loki-gateway
+      - -querier.frontend-grpc-client.tls-enabled=true
+      - -querier.frontend-grpc-client.tls-ca-path=/tmp/certs/loki/ca.crt
+      - -ingester.client.tls-server-name=loki-gateway
+      - -querier.scheduler-grpc-client.tls-enabled=true
+      - -querier.scheduler-grpc-client.tls-ca-path=/tmp/certs/loki/ca.crt
+      - -ingester.client.tls-server-name=loki-gateway
+      - -query-scheduler.grpc-client-config.tls-enabled=true
+      - -query-scheduler.grpc-client-config.tls-ca-path=/tmp/certs/loki/ca.crt
+      - -ingester.client.tls-server-name=loki-gateway
+      - -ruler.client.tls-enabled=true
+      - -ruler.client.tls-ca-path=/tmp/certs/loki/ca.crt
+      - -ingester.client.tls-server-name=loki-gateway
+      - -tsdb.shipper.index-gateway-client.grpc.tls-enabled=true
+      - -tsdb.shipper.index-gateway-client.grpc.tls-ca-path=/tmp/certs/loki/ca.crt
+      - -tsdb.shipper.index-gateway-client.grpc.tls-server-name=loki-gateway
+  backend:
+    extraArgs:
+      - "-config.expand-env=true"
+      - -boltdb.shipper.index-gateway-client.grpc.tls-enabled=true
+      - -boltdb.shipper.index-gateway-client.grpc.tls-ca-path=/tmp/certs/loki/ca.crt
+      - -boltdb.shipper.index-gateway-client.grpc.tls-server-name=loki-gateway
+      - -compactor.grpc-client.tls-enabled=true
+      - -compactor.grpc-client.tls-ca-path=/tmp/certs/loki/ca.crt
+      - -compactor.grpc-client.tls-server-name=loki-gateway
+      - -frontend.grpc-client-config.tls-enabled=true
+      - -frontend.grpc-client-config.tls-ca-path=/tmp/certs/loki/ca.crt
+      - -frontend.grpc-client-config.tls-server-name=loki-gateway
+      - -ingester.client.tls-enabled=true
+      - -ingester.client.tls-ca-path=/tmp/certs/loki/ca.crt
+      - -ingester.client.tls-server-name=loki-gateway
+      - -querier.frontend-grpc-client.tls-enabled=true
+      - -querier.frontend-grpc-client.tls-ca-path=/tmp/certs/loki/ca.crt
+      - -querier.frontend-grpc-client.tls-server-name=loki-gateway
+      - -querier.scheduler-grpc-client.tls-enabled=true
+      - -querier.scheduler-grpc-client.tls-ca-path=/tmp/certs/loki/ca.crt
+      - -querier.scheduler-grpc-client.tls-server-name=loki-gateway
+      - -query-scheduler.grpc-client-config.tls-enabled=true
+      - -query-scheduler.grpc-client-config.tls-ca-path=/tmp/certs/loki/ca.crt
+      - -query-scheduler.grpc-client-config.tls-server-name=loki-gateway
+      - -ruler.client.tls-enabled=true
+      - -ruler.client.tls-ca-path=/tmp/certs/loki/ca.crt
+      - -querier.frontend-grpc-client.tls-server-name=loki-gateway
+      - -tsdb.shipper.index-gateway-client.grpc.tls-enabled=true
+      - -tsdb.shipper.index-gateway-client.grpc.tls-ca-path=/tmp/certs/loki/ca.crt
+      - -tsdb.shipper.index-gateway-client.grpc.tls-server-name=loki-gateway
+    extraEnv:
+      - name: ACCESSKEYID
+        valueFrom:
+          secretKeyRef:
+            name: mission-control-minio
+            key: rootUser
+      - name: SECRETACCESSKEY
+        valueFrom:
+          secretKeyRef:
+            name: mission-control-minio
+            key: rootPassword
