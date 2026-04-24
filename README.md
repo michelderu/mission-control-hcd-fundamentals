@@ -167,7 +167,7 @@ This lab uses **pinned base + overrides** as the standard approach:
 >
 > This is for local/lab convenience only. Change credentials for any shared or persistent environment as explained below.
 
-Generate a bcrypt hash for Dex admin login:
+Only if you want to customize the authoentication, generate a bcrypt hash for Dex admin login:
 
 ```bash
 echo 'your-password-here' | htpasswd -BinC 10 admin | cut -d: -f2
@@ -250,7 +250,8 @@ kubectl port-forward svc/mission-control-ui -n mission-control 8080:8080
 Open:
 
 - `https://localhost:8080`
-- Login with Dex credentials from `mc-overrides.yaml`
+- Login with Dex credentials from `mc-overrides.yaml`.
+- Defaults provided in this lab: `mission-control@example.com` / `cassandra`.
 
 If the page does not load, first check if the `mission-control-ui` service exists and pods are ready in the `mission-control` namespace.
 
@@ -258,7 +259,7 @@ If the page does not load, first check if the `mission-control-ui` service exist
 
 ## 9️⃣ Upgrade after chart changes
 
-Use the same lab standard: **pinned base + overrides**. This means you make changes in `mc-overrides.yaml`.
+Use the same lab standard: **pinned base + overrides**. This means you make your changes in `mc-overrides.yaml`.
 
 ```bash
 helm upgrade mission-control oci://registry.replicated.com/mission-control/stable/mission-control \
