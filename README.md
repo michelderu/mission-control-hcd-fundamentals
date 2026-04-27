@@ -300,8 +300,14 @@ helm uninstall mission-control -n mission-control
 kubectl delete namespace mission-control
 ```
 
+> [!NOTE]
+> `helm uninstall` removes the Mission Control control plane release. It does not automatically remove data clusters you created with Mission Control unless you delete/decommission those resources separately.
+
 Delete KinD cluster:
 
 ```bash
 kind delete cluster
 ```
+
+> [!NOTE]
+> `kind delete cluster` removes the entire KinD cluster and all Kubernetes resources inside it (including Mission Control, created clusters, and in-cluster data/PVC state for that cluster).
