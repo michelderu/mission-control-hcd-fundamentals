@@ -272,6 +272,25 @@ helm upgrade mission-control oci://registry.replicated.com/mission-control/stabl
 
 ---
 
+## 💤 Pause / Resume the lab with Docker
+
+If you want to temporarily stop resource usage without deleting the cluster, you can pause the KinD node containers:
+
+```bash
+docker pause $(docker ps -q --filter "name=mc-")
+```
+
+Resume them later:
+
+```bash
+docker unpause $(docker ps -q --filter "name=mc-")
+```
+
+> [!NOTE]
+> This pauses container processes at the Docker level. It is useful for short local breaks, but not ideal for long-term suspend workflows.
+
+---
+
 ## 🔟 Uninstall / reset
 
 Uninstall Mission Control:
