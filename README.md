@@ -306,8 +306,8 @@ kubectl delete namespace mission-control
 Delete KinD cluster:
 
 ```bash
-kind delete cluster
+kind delete cluster --name mc
 ```
 
 > [!NOTE]
-> `kind delete cluster` removes the entire KinD cluster and all Kubernetes resources inside it (including Mission Control, created clusters, and in-cluster data/PVC state for that cluster).
+> `kind delete cluster --name mc` removes the entire KinD cluster and all Kubernetes resources inside it (including Mission Control, created clusters, and in-cluster data/PVC state for that cluster).
