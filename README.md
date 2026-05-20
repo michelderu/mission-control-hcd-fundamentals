@@ -134,17 +134,17 @@ kubectl get nodes -L mission-control.datastax.com/role,topology.kubernetes.io/zo
 
 ```mermaid
 flowchart LR
-  subgraph platform["Platform — mission-control.datastax.com/role=platform"]
-    w1["mc-worker"]
-    w2["mc-worker2"]
-  end
-
   subgraph database["Database — mission-control.datastax.com/role=database"]
     w3["mc-worker3<br/>zoneA"]
     w4["mc-worker4<br/>zoneB"]
     w5["mc-worker5<br/>zoneC"]
   end
 
+  subgraph platform["Platform — mission-control.datastax.com/role=platform"]
+    w1["mc-worker"]
+    w2["mc-worker2"]
+  end
+  
   w1 --- w2
   w3 --- w4 --- w5
 ```
@@ -281,40 +281,52 @@ kubectl get pods -n mission-control \
   --sort-by=.spec.nodeName
 ```
 
-**Example runtime topology** (pods in `mission-control` after a successful install; placement may vary slightly by chart version):
+**Example runtime topology** (pods in `mission-control` after a successful install; placement may vary slightly by chart version). Each KinD worker shows **node metadata** (name, `mission-control.datastax.com/role`, `topology.kubernetes.io/zone`) above the **pods** scheduled on that node:
 
 ```mermaid
 flowchart TB
-  subgraph w1["mc-worker · role=platform"]
+  subgraph mc["mission-control namespace — pod placement"]
     direction TB
-    w1_ops["operator · k8ssandra-operator"]
-    w1_ui["dex · loki-gateway · loki-write-0"]
-    w1_data["minio · mimir-distributor"]
+
+    subgraph platform["Platform role"]
+      direction TB
+      w1_meta["Node: mc-worker<br/>Role: platform<br/>Zone: —"]
+      w1_pods["Pods<br/>operator · k8ssandra-operator · dex<br/>loki-gateway · loki-write-0 · minio · mimir-distributor"]
+      w1_meta --> w1_pods
+      w2_meta["Node: mc-worker2<br/>Role: platform<br/>Zone: —"]
+      w2_pods["Pods<br/>cass-operator · ui · replicated · aggregator-0<br/>kube-state-metrics · overrides-exporter · loki-read · loki-backend"]
+      w2_meta --> w2_pods
+      w1_pods ~~~ w2_meta
+    end
+
+    subgraph database["Database role"]
+      direction TB
+      w3_meta["Node: mc-worker3<br/>Role: database<br/>Zone: zoneA"]
+      w3_pods["Pods<br/>mimir-alertmanager-0 · compactor-0 · ingester-1<br/>query-frontend · query-scheduler"]
+      w3_meta --> w3_pods
+      w4_meta["Node: mc-worker4<br/>Role: database<br/>Zone: zoneB"]
+      w4_pods["Pods<br/>mimir-gateway · ingester-0 · querier · ruler"]
+      w4_meta --> w4_pods
+      w5_meta["Node: mc-worker5<br/>Role: database<br/>Zone: zoneC"]
+      w5_pods["Pods<br/>mimir-ingester-2 · store-gateway-0 · querier · query-scheduler<br/>crd-patcher · make-minio-buckets"]
+      w5_meta --> w5_pods
+      w3_pods ~~~ w4_meta
+      w4_pods ~~~ w5_meta
+    end
+
+    w2_pods ~~~ w3_meta
   end
 
-  subgraph w2["mc-worker2 · role=platform"]
-    direction TB
-    w2_ops["cass-operator · ui · replicated"]
-    w2_obs["aggregator-0 · kube-state-metrics · overrides-exporter"]
-    w2_loki["loki-read · loki-backend-0"]
-  end
+  classDef nodeMeta fill:#fafafa,stroke:#616161,stroke-width:1px,color:#212121
+  classDef platformPods fill:#e3f2fd,stroke:#1565c0,stroke-width:2px,color:#0d47a1
+  classDef databasePods fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px,color:#1b5e20
 
-  subgraph w3["mc-worker3 · role=database · zoneA"]
-    direction TB
-    w3_mimir["mimir-alertmanager-0 · compactor-0 · ingester-1"]
-    w3_q["mimir-query-frontend · mimir-query-scheduler"]
-  end
+  class w1_meta,w2_meta,w3_meta,w4_meta,w5_meta nodeMeta
+  class w1_pods,w2_pods platformPods
+  class w3_pods,w4_pods,w5_pods databasePods
 
-  subgraph w4["mc-worker4 · role=database · zoneB"]
-    direction TB
-    w4_mimir["mimir-gateway · ingester-0 · querier · ruler"]
-  end
-
-  subgraph w5["mc-worker5 · role=database · zoneC"]
-    direction TB
-    w5_mimir["mimir-ingester-2 · store-gateway-0 · querier · query-scheduler"]
-    w5_jobs["crd-patcher · make-minio-buckets · Succeeded"]
-  end
+  style platform fill:#f5f9ff,stroke:#1565c0,stroke-width:2px
+  style database fill:#f1f8e9,stroke:#2e7d32,stroke-width:2px
 ```
 
 | Node | Role | Zone | Example pods |
