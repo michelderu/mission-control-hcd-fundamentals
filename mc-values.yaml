@@ -1,0 +1,1789 @@
+global:
+  clusterScoped: true
+  # -- Labels to be added to all deployed resources.
+  commonLabels: {}
+  # -- Annotations to be added to all deployed resources.
+  commonAnnotations: {}
+  # -- If true, the helm chart will generate ClusterRoles and ClusterRoleBindings.
+  # Set to false to give Mission Control up-front, more restricted permissions.
+  clusterScopedResources: true
+  # -- ImageConfig allows to set default values for all the container images used by Mission Control.
+  imageConfig:
+    images:
+      cql-router:
+        registry: "proxy.replicated.com"
+        repository: "proxy/mission-control/559669398656.dkr.ecr.us-west-2.amazonaws.com/mission-control"
+        name: "cql-router"
+        tag: "ed96e7c4"
+      cqlsh:
+        registry: "proxy.replicated.com"
+        repository: "proxy/mission-control/559669398656.dkr.ecr.us-west-2.amazonaws.com/mission-control"
+        name: "cqlsh-pod"
+        tag: "d6dcf587"
+      data-api:
+        repository: "stargateio"
+        name: "data-api"
+        tag: "v1.0.40"
+      k8ssandra-client:
+        repository: "k8ssandra"
+        name: "k8ssandra-client"
+        tag: "v0.8.10"
+      medusa:
+        repository: "k8ssandra"
+        name: "medusa"
+        tag: "0.27.1"
+    defaults:
+      pullSecrets:
+        - "{{ .Release.Name}}-registry"
+    types:
+      hcd:
+        registry: "proxy.replicated.com"
+        repository: "proxy/mission-control/559669398656.dkr.ecr.us-west-2.amazonaws.com/engops-shared/hcd/prod"
+        name: "hcd"
+        suffix: "-ubi"
+  replicated:
+    channelName: Stable
+    customerEmail: michel.deru@ibm.com
+    customerName: IBM - Michel De Ru
+    dockerconfigjson: eyJhdXRocyI6eyJwcm94eS5yZXBsaWNhdGVkLmNvbSI6eyJhdXRoIjoiTXpsemQzSnpOblp3YWxsMVZtRm1VMDlOWXpsUlVGcFVUa05TT2pNNWMzZHljeloyY0dwWmRWWmhabE5QVFdNNVVWQmFWRTVEVWc9PSJ9LCJyZWdpc3RyeS5yZXBsaWNhdGVkLmNvbSI6eyJhdXRoIjoiTXpsemQzSnpOblp3YWxsMVZtRm1VMDlOWXpsUlVGcFVUa05TT2pNNWMzZHljeloyY0dwWmRWWmhabE5QVFdNNVVWQmFWRTVEVWc9PSJ9fX0=
+    licenseFields:
+      expires_at:
+        name: expires_at
+        title: Expiration
+        description: License Expiration
+        value: ""
+        valueType: String
+        signature:
+          v1: o2ZNBP3rErb+ggjaIZPlMl6wMI1HZ3K+kCXelKFPXb0ZDa+uQbCDp7vfet145lBcgBPSCCm0gSxHVa0AsxsMIM0NW+TE6P4yY2rzi+1wiueTKK1ks8vPxPU4EH/lh6XXOtUJTz7xcNqi44zxsWbpcnj5a785Q8dpMdbQ5mjFk98LUQFY3q+4nZ1LjEXJkXVGIHapakdw3I+a/S6rNhe14SzzAzwEJ9VnIZPUIm4qpHBammo7wdvrtZdot7+vSnCSXRglgiuhkVedxhrk0Gw4/k0w4OiTJmkFEGjT7UA2IzKX3LjJgvs4PveCfnS6jrgfVS3kgwCnJ/2bGDH/4Z5PQQ==
+    licenseID: 39swrs6vpjYuVafSOMc9QPZTNCR
+    licenseType: dev
+# -- A name in place of the chart name which is used in the metadata.name of
+# objects created by this chart.
+nameOverride: ""
+# -- A name in place of the value used for metadata.name in objects created by
+# this chart. The default value has the form releaseName-chartName.
+fullnameOverride: ""
+# -- Labels to be added to all deployed resources.
+commonLabels: {}
+# -- Sets the number of mission-control-operator pods.
+replicaCount: 1
+# -- Determines if the mission-control-operator should be installed as the control plane
+# or if it's simply in a secondary cluster waiting to be promoted
+controlPlane: true
+disableCertManagerCheck: true
+disablePullSecretsGeneration: false
+# --
+tls:
+  # -- Generate the root CA used to derive TLS Certificates for various components of Mission Control, except webhooks and certs related to DBs themselves.
+  # Certificate generation is unconditional and happens always. In effect, TLS is mandatory and cannot be disabled.
+  generateCa: true
+  # -- Allows deriving the Certificates Mission Control generates from an already existing CA.
+  rootCaSecretName: "mission-control-platform-ca"
+  certDuration: 8760h # 365 days
+  certRenewBefore: 336h # 14 days before expiry
+# Sets properties for the mission-control-operator container
+image:
+  # -- Container registry containing the repository where the image resides
+  registry: docker.io
+  # -- Docker repository for mission-control-operator
+  repository: datastax/mission-control
+  # -- Pull policy for the operator container
+  pullPolicy: IfNotPresent
+  # -- Tag of the mission-control-operator image to pull from image.repository
+  tag: v1.18.0
+# -- References to secrets to use when pulling images. See:
+# https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/
+# imagePullSecret: secretName
+
+ingress:
+  #-- Automates configuring ingress for all services within Mission Control
+  enabled: false
+  #-- Region domain to use for the ingress.
+  regionDomain: ""
+  #-- Wildcard domain to use for the ingress.
+  wildcardDomain: ""
+serviceAccount:
+  # -- Annotations to add to the service account.
+  annotations: {}
+# -- Annotations for the mission-control-operator pod.
+podAnnotations: {}
+# -- PodSecurityContext for the mission-control-operator pod. See:
+# https://kubernetes.io/docs/tasks/configure-pod-container/security-context/
+podSecurityContext:
+  runAsNonRoot: true
+securityContext:
+  # -- Restrict privilege escalation for the mission-control-operator container.
+  allowPrivilegeEscalation: false
+  # -- Run mission-control-operator container as non-root user
+  runAsNonRoot: true
+  # -- Group for the user running the mission-control-operator container / process
+  runAsGroup: 65534
+  # -- User for running the mission-control-operator container / process
+  runAsUser: 65534
+  # -- Run mission-control-operator container having read-only root file system permissions.
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop:
+      - ALL
+  seccompProfile:
+    type: RuntimeDefault
+# -- Resources requests and limits for the mission-control-operator pod. We usually
+# recommend not to specify default resources and to leave this as a conscious
+# choice for the user. This also increases chances charts run on environments
+# with little resources, such as Minikube. If you want to specify resources, add
+# `requests` and `limits` for `cpu` and `memory` while removing the existing
+# `{}`
+resources: {}
+# -- Node labels for operator pod assignment.
+# Ref: https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/
+#
+nodeSelector: {}
+# -- Node tolerations for server scheduling to nodes with taints.
+# Ref: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/
+#
+tolerations: []
+# -- Node affinity for operator pod assignment.
+allowOperatorsOnDatabaseNodes: true
+alerting: {}
+# -- CustomRules managed in this Helm release.
+#  customRules: |
+#    - alert: my-custom-alert-rule
+#      annotations:
+#        context: "More information about the alert"
+#        description: test alert description
+#        summary: test alert summary
+#      expr: org_apache_cassandra_metrics_table_memtable_on_heap_data_size_all > 100000000
+#      for: 1m
+#      labels:
+#        group: ""
+#        severity: warning
+
+client:
+  # -- Automatically handle CRD upgrades
+  manageCrds: true
+  image:
+    # -- Container registry containing the repository where the image resides
+    registry: docker.io
+    # -- Docker repository for k8ssandra-client
+    repository: k8ssandra/k8ssandra-client
+    # -- Pull policy for the operator container
+    pullPolicy: IfNotPresent
+    # -- Tag of the k8ssandra-client image to pull from image.repository
+    tag: mission-control-1.18.0
+  # -- HTTPS proxy address to use for communication to helm.k8ssandra.io
+  #proxy:
+  securityContext:
+    runAsNonRoot: true
+    allowPrivilegeEscalation: false
+    capabilities:
+      drop:
+        - ALL
+    seccompProfile:
+      type: RuntimeDefault
+    readOnlyRootFilesystem: true
+  podSecurityContext:
+    runAsNonRoot: true
+  # -- Resources requests and limits for the crd-upgrader pod. We usually
+  # recommend not to specify default resources and to leave this as a conscious
+  # choice for the user. This also increases chances charts run on environments
+  # with little resources, such as Minikube. If you want to specify resources, add
+  # `requests` and `limits` for `cpu` and `memory` while removing the existing
+  # `{}`
+  resources: {}
+  # -- Node labels for crd-upgrader pod assignment.
+  # Ref: https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/
+  nodeSelector: {}
+  # -- Node tolerations for server scheduling to nodes with taints.
+  # Ref: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/
+  tolerations: []
+ui:
+  enabled: true
+  # -- Base URL that client browsers will use to access the UI.
+  # If Dex only uses static passwords and/or the LDAP connector, this can be left empty, and the UI will work via any
+  # routable URL.
+  # If Dex uses an external provider (e.g. OIDC), this must be set, and the UI can only be accessed via this canonical
+  # URL.
+  baseUrl: ''
+  securityContext:
+    allowPrivilegeEscalation: false
+    capabilities:
+      drop:
+        - ALL
+    seccompProfile:
+      type: RuntimeDefault
+    readOnlyRootFilesystem: true
+  podSecurityContext:
+    runAsNonRoot: true
+  image:
+    # -- Image registry for the ui
+    registry: docker.io
+    # -- Image repository for the ui
+    repository: datastax/mission-control-ui
+    # -- Tag of the client image to pull from
+    tag: v1.18.0
+    # -- Pull policy for the client container
+    pullPolicy: IfNotPresent
+  service:
+    nodePort: 30880
+  # URL of a Prometheus-like system to read metrics from
+  # --- Embedded mode for Mission Control UI disables certain endpoints in the rest-api that are not desirable
+  # when running as a part of watsonx.data
+  embeddedMode:
+    enabled: false
+  # -- Resources requests and limits for the mission-control-ui pod. We usually
+  # recommend not to specify default resources and to leave this as a conscious
+  # choice for the user. This also increases chances charts run on environments
+  # with little resources, such as Minikube. If you want to specify resources, add
+  # `requests` and `limits` for `cpu` and `memory` while removing the existing
+  # `{}`
+  resources: {}
+  # -- Node labels for ui pod assignment.
+  # Ref: https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/
+  nodeSelector: {}
+  # -- Node tolerations for server scheduling to nodes with taints.
+  # Ref: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/
+  tolerations: []
+  # -- Configure UI / restapi related settings for Mimir, such as rules
+  customVolumeMounts:
+    - name: loki-tls-cert
+      mountPath: /tmp/certs/loki
+  customVolumes:
+    - name: loki-tls-cert
+      secret:
+        secretName: loki-tls
+dex:
+  image:
+    repository: docker.io/datastax/mission-control-dex
+    tag: v1.18.0
+  configSecret:
+    name: mission-control-ui-dex-config # We can't give dynamic naming here due to the way the dex chart works
+    create: false
+  https:
+    enabled: true
+  config:
+    issuer: https://{{ .Release.Name }}-dex:5554/dex
+    storage:
+      type: kubernetes
+      config:
+        inCluster: true
+    web:
+      https: 0.0.0.0:5554
+      tlsCert: /etc/dex/tls/tls.crt
+      tlsKey: /etc/dex/tls/tls.key
+    telemetry:
+      http: 127.0.0.1:5558
+    grpc:
+      addr: 127.0.0.1:5557
+    staticClients:
+      - id: mission-control-ui
+        redirectURIs:
+          - '/v1/auth/callback'
+        name: 'Mission Control GUI'
+        secret: ZXhhbXBsZS1hcHAtc2VjcmV0
+    frontend:
+      issuer: Mission Control
+    # --- Test settings, generates test admin user - not for production ever!!
+    enablePasswordDB: false
+  service:
+    type: ClusterIP
+    ports:
+      http:
+        port: 5556
+  securityContext:
+    allowPrivilegeEscalation: false
+    capabilities:
+      drop:
+        - ALL
+    seccompProfile:
+      type: RuntimeDefault
+    readOnlyRootFilesystem: true
+  podSecurityContext:
+    runAsNonRoot: true
+  volumes:
+    - name: tmp-dir
+      emptyDir: {}
+    - name: tls-certs
+      secret:
+        secretName: mission-control-dex-tls # TODO: document that if tls, but not genCert, user needs to set this
+        defaultMode: 420
+  volumeMounts:
+    - name: tmp-dir
+      mountPath: /tmp
+      readOnly: false
+    - mountPath: /etc/dex/tls
+      name: tls-certs
+      readOnly: true
+  commonLabels:
+    missioncontrol.datastax.com/component: dex
+agent:
+  enabled: false
+  role: Agent
+  persistence:
+    enabled: false
+    hostPath:
+      enabled: false
+  customConfig:
+    data_dir: /vector-data-dir
+    api:
+      enabled: true
+      address: 127.0.0.1:8686
+      playground: false
+aggregator:
+  enabled: true
+  persistence:
+    enabled: true
+  podValuesChecksumAnnotation: true
+  securityContext:
+    runAsNonRoot: true
+    allowPrivilegeEscalation: false
+    capabilities:
+      drop:
+        - ALL
+    seccompProfile:
+      type: RuntimeDefault
+    readOnlyRootFilesystem: true
+  podSecurityContext:
+    runAsNonRoot: true
+    runAsUser: 10001
+    runAsGroup: 10001
+    fsGroup: 10001
+  serviceHeadless:
+    enabled: false
+  service:
+    type: ClusterIP
+    ports:
+      - name: vector
+        protocol: TCP
+        port: 6000
+        targetPort: 6000
+  extraVolumes:
+    - name: aggregator-tls-cert
+      secret:
+        secretName: mission-control-aggregator-tls-server
+    - name: loki-tls-cert
+      secret:
+        secretName: loki-tls
+    - name: mimir-tls-cert
+      secret:
+        secretName: mimir-tls
+        defaultMode: 420
+  extraVolumeMounts:
+    - name: aggregator-tls-cert
+      mountPath: /tmp/certs/aggregator
+    - name: loki-tls-cert
+      mountPath: /tmp/certs/loki
+    - name: mimir-tls-cert
+      mountPath: /tmp/certs/mimir
+      readOnly: true
+  customConfig:
+    data_dir: /vector-data-dir
+    api:
+      enabled: true
+      address: 127.0.0.1:8686
+      playground: false
+    sources:
+      internal_metrics:
+        type: internal_metrics
+      statsd:
+        address: 0.0.0.0:8125
+        mode: tcp
+        type: statsd
+      syslog:
+        address: 0.0.0.0:9000
+        mode: tcp
+        type: syslog
+      vector:
+        address: 0.0.0.0:6000
+        type: vector
+        version: "2"
+        tls:
+          enabled: true
+          ca_file: "/tmp/certs/aggregator/ca.crt"
+          crt_file: "/tmp/certs/aggregator/tls.crt"
+          key_file: "/tmp/certs/aggregator/tls.key"
+          verify_certificate: true
+          verify_hostname: false
+      prometheus_push:
+        type: prometheus_remote_write
+        expire_metrics_secs: 3600
+        address: 0.0.0.0:9090
+      kube_state_metrics:
+        type: prometheus_scrape
+        endpoints:
+          - "http://{{ .relName }}-kube-state-metrics:8080/metrics"
+      mimir-self-monitoring:
+        type: prometheus_scrape
+        tls:
+          crt_file: /tmp/certs/mimir/tls.crt
+          key_file: /tmp/certs/mimir/tls.key
+          verify_certificate: false
+          server_name: mission-control-mimir
+        endpoints:
+          - https://{{ .relName }}-mimir-alertmanager:8080/metrics
+          - https://{{ .relName }}-mimir-compactor:8080/metrics
+          - https://{{ .relName }}-mimir-distributor:8080/metrics
+          - https://{{ .relName }}-mimir-ingester:8080/metrics
+          - https://{{ .relName }}-mimir-querier:8080/metrics
+          - https://{{ .relName }}-mimir-ruler:8080/metrics
+          - https://{{ .relName }}-mimir-query-frontend:8080/metrics
+          - https://{{ .relName }}-mimir-query-scheduler:8080/metrics
+          - https://{{ .relName }}-mimir-store-gateway:8080/metrics
+    transforms:
+      # Ensure that all fields we are using as Loki labels have defaults. We are dealing with two log sources:
+      # - DSE logs (see `ConfigureVectorForDseDatacenter` in `pkg/k8ssandrautils/k8ssandra_cluster.go`)
+      # - Kubernetes logs (see `kubernetes_logs` source in the Vector agent config)
+      vector_with_defaults:
+        type: remap
+        inputs: ["vector"]
+        source: |-
+          if !exists(.namespace) {
+            if exists(.kubernetes.pod_namespace) {
+              .namespace = del(.kubernetes.pod_namespace)
+            } else {
+              .namespace = "unknown"
+            }
+          }
+          if !exists(.pod_name) {
+            if exists(.kubernetes.pod_name) {
+              .pod_name = del(.kubernetes.pod_name)
+            } else {
+              .pod_name = "unknown"
+            }
+          }
+          if !exists(.container_name) {
+            if exists(.kubernetes.container_name) {
+              .container_name = del(.kubernetes.container_name)
+            } else {
+              .container_name = "unknown"
+            }
+          }
+          if !exists(.file) { .file = "unknown" }
+          if !exists(.cluster) { .cluster = "unknown" }
+          if !exists(.datacenter) { .datacenter = "unknown" }
+          if !exists(.rack) { .rack = "unknown" }
+    sinks:
+      mimir:
+        type: "prometheus_remote_write"
+        tls:
+          crt_file: /tmp/certs/mimir/tls.crt
+          key_file: /tmp/certs/mimir/tls.key
+          verify_certificate: false
+          server_name: mission-control-mimir
+        inputs: ["vector", "internal_metrics", "kube_state_metrics", "mimir-self-monitoring", "prometheus_push", "statsd"]
+        endpoint: "https://{{ .relName }}-mimir-gateway:443/api/v1/push"
+        expire_metrics_secs: 3600
+        # disabling health check (which is a GET) because Mimir is not accepting GETs
+        healthcheck:
+          enabled: false
+        request:
+          retry_attempts: 1
+      loki:
+        type: loki
+        inputs: [vector_with_defaults, syslog]
+        endpoint: "https://loki-gateway"
+        tenant_id: anonymous
+        out_of_order_action: accept
+        request:
+          retry_attempts: 1
+        labels:
+          source_type: |-
+            {{ print "{{ source_type }}" }}
+          namespace: |-
+            {{ print "{{ namespace }}" }}
+          pod_name: |-
+            {{ print "{{ pod_name }}" }}
+          file: |-
+            {{ print "{{ file }}" }}
+          cluster: |-
+            {{ print "{{ cluster }}" }}
+          datacenter: |-
+            {{ print "{{ datacenter }}" }}
+          rack: |-
+            {{ print "{{ rack }}" }}
+          container_name: |-
+            {{ print "{{ container_name }}" }}
+        encoding:
+          codec: json
+        tls:
+          ca_file: /tmp/certs/loki/ca.crt
+          server_name: "loki-gateway"
+          verify_hostname: true
+loki:
+  enabled: true
+  image:
+    tag: 3.5.12
+  strategy: "scalable"
+  rbac:
+    namespaced: true
+    # Set to true in OpenShift to use SecurityContextConstraints
+    sccEnabled: false
+  podSecurityContext:
+    fsGroup: 10001
+    runAsGroup: 10001
+    runAsNonRoot: true
+    runAsUser: 10001
+  containerSecurityContext:
+    allowPrivilegeEscalation: false
+    capabilities:
+      drop:
+        - ALL
+    seccompProfile:
+      type: RuntimeDefault
+    readOnlyRootFilesystem: true
+    runAsNonRoot: true
+  # Enable the following when running on openshift
+  #global:
+  #  clusterDomain: cluster.local
+  #  dnsNamespace: openshift-dns
+  #  dnsService: dns-default
+  loki:
+    analytics:
+      reporting_enabled: false
+    commonConfig:
+      replication_factor: 1
+    rulerConfig:
+      storage:
+        type: local
+        local:
+          directory: "/var/loki/rules"
+    storage:
+      bucketNames:
+        chunks: loki-chunks
+      type: s3
+    compactor:
+      retention_enabled: true
+      working_directory: '/var/loki/retention'
+    limits_config:
+      retention_period: 7d
+    schemaConfig:
+      configs:
+        - from: 2025-06-13
+          object_store: # Specify the object store to use for the schema config. Either s3, azure or gcs.
+          store: tsdb
+          schema: v13
+          index:
+            period: 24h
+            prefix: mc_loki_
+    podSecurityContext:
+      runAsNonRoot: true
+    readinessProbe:
+      httpGet:
+        scheme: HTTPS
+    containerSecurityContext:
+      allowPrivilegeEscalation: false
+      readOnlyRootFilesystem: true
+      seccompProfile:
+        type: RuntimeDefault
+      capabilities:
+        drop:
+          - ALL
+      runAsNonRoot: true
+    structuredConfig:
+      server:
+        log_level: debug
+        http_tls_config:
+          cert_file: /tmp/certs/loki/tls.crt
+          key_file: /tmp/certs/loki/tls.key
+          client_auth_type: NoClientCert
+        grpc_tls_config:
+          cert_file: /tmp/certs/loki/tls.crt
+          key_file: /tmp/certs/loki/tls.key
+          client_auth_type: NoClientCert
+  gateway:
+    image:
+      tag: 1.29-alpine3.22-slim
+    extraVolumeMounts:
+      - name: loki-tls-cert
+        mountPath: /tmp/certs/loki
+    extraVolumes:
+      - name: loki-tls-cert
+        secret:
+          secretName: loki-tls
+    service:
+      port: 443
+    readinessProbe:
+      httpGet:
+        scheme: HTTPS
+    nginxConfig:
+      schema: https
+      ssl: true
+      serverSnippet: |
+        ssl_certificate /tmp/certs/loki/tls.crt;
+        ssl_certificate_key /tmp/certs/loki/tls.key;
+        proxy_ssl_trusted_certificate /tmp/certs/loki/ca.crt;
+  resultsCache:
+    enabled: false
+  chunksCache:
+    enabled: false
+  read:
+    persistence:
+      enabled: true
+      size: 10Gi
+      storageClassName: ""
+    replicas: 1
+    extraVolumeMounts:
+      - name: loki-tls-cert
+        mountPath: /tmp/certs/loki
+    extraVolumes:
+      - name: loki-tls-cert
+        secret:
+          secretName: loki-tls
+    extraArgs:
+      - -boltdb.shipper.index-gateway-client.grpc.tls-enabled=true
+      - -boltdb.shipper.index-gateway-client.grpc.tls-ca-path=/tmp/certs/loki/ca.crt
+      - -boltdb.shipper.index-gateway-client.grpc.tls-server-name=loki-gateway
+      - -compactor.grpc-client.tls-enabled=true
+      - -compactor.grpc-client.tls-ca-path=/tmp/certs/loki/ca.crt
+      - -compactor.grpc-client.tls-server-name=loki-gateway
+      - -frontend.grpc-client-config.tls-enabled=true
+      - -frontend.grpc-client-config.tls-ca-path=/tmp/certs/loki/ca.crt
+      - -frontend.grpc-client-config.tls-server-name=loki-gateway
+      - -ingester.client.tls-enabled=true
+      - -ingester.client.tls-ca-path=/tmp/certs/loki/ca.crt
+      - -ingester.client.tls-server-name=loki-gateway
+      - -querier.frontend-grpc-client.tls-enabled=true
+      - -querier.frontend-grpc-client.tls-ca-path=/tmp/certs/loki/ca.crt
+      - -querier.frontend-grpc-client.tls-server-name=loki-gateway
+      - -querier.scheduler-grpc-client.tls-enabled=true
+      - -querier.scheduler-grpc-client.tls-ca-path=/tmp/certs/loki/ca.crt
+      - -querier.scheduler-grpc-client.tls-server-name=loki-gateway
+      - -query-scheduler.grpc-client-config.tls-enabled=true
+      - -query-scheduler.grpc-client-config.tls-ca-path=/tmp/certs/loki/ca.crt
+      - -query-scheduler.grpc-client-config.tls-server-name=loki-gateway
+      - -ruler.client.tls-enabled=true
+      - -ruler.client.tls-ca-path=/tmp/certs/loki/ca.crt
+      - -ruler.client.tls-server-name=loki-gateway
+      - -tsdb.shipper.index-gateway-client.grpc.tls-enabled=true
+      - -tsdb.shipper.index-gateway-client.grpc.tls-ca-path=/tmp/certs/loki/ca.crt
+      - -tsdb.shipper.index-gateway-client.grpc.tls-server-name=loki-gateway
+  write:
+    persistence:
+      enabled: true
+      size: 10Gi
+      storageClassName: ""
+    replicas: 1
+    extraVolumeMounts:
+      - name: loki-tls-cert
+        mountPath: /tmp/certs/loki
+    extraVolumes:
+      - name: loki-tls-cert
+        secret:
+          secretName: loki-tls
+    extraArgs:
+      - -boltdb.shipper.index-gateway-client.grpc.tls-enabled=true
+      - -boltdb.shipper.index-gateway-client.grpc.tls-ca-path=/tmp/certs/loki/ca.crt
+      - -boltdb.shipper.index-gateway-client.grpc.tls-server-name=loki-gateway
+      - -compactor.grpc-client.tls-enabled=true
+      - -compactor.grpc-client.tls-ca-path=/tmp/certs/loki/ca.crt
+      - -compactor.grpc-client.tls-server-name=loki-gateway
+      - -frontend.grpc-client-config.tls-enabled=true
+      - -frontend.grpc-client-config.tls-ca-path=/tmp/certs/loki/ca.crt
+      - -frontend.grpc-client-config.tls-server-name=loki-gateway
+      - -ingester.client.tls-enabled=true
+      - -ingester.client.tls-ca-path=/tmp/certs/loki/ca.crt
+      - -ingester.client.tls-server-name=loki-gateway
+      - -querier.frontend-grpc-client.tls-enabled=true
+      - -querier.frontend-grpc-client.tls-ca-path=/tmp/certs/loki/ca.crt
+      - -ingester.client.tls-server-name=loki-gateway
+      - -querier.scheduler-grpc-client.tls-enabled=true
+      - -querier.scheduler-grpc-client.tls-ca-path=/tmp/certs/loki/ca.crt
+      - -ingester.client.tls-server-name=loki-gateway
+      - -query-scheduler.grpc-client-config.tls-enabled=true
+      - -query-scheduler.grpc-client-config.tls-ca-path=/tmp/certs/loki/ca.crt
+      - -ingester.client.tls-server-name=loki-gateway
+      - -ruler.client.tls-enabled=true
+      - -ruler.client.tls-ca-path=/tmp/certs/loki/ca.crt
+      - -ingester.client.tls-server-name=loki-gateway
+      - -tsdb.shipper.index-gateway-client.grpc.tls-enabled=true
+      - -tsdb.shipper.index-gateway-client.grpc.tls-ca-path=/tmp/certs/loki/ca.crt
+      - -tsdb.shipper.index-gateway-client.grpc.tls-server-name=loki-gateway
+  backend:
+    replicas: 1
+    extraVolumeMounts:
+      - name: loki-tls-cert
+        mountPath: /tmp/certs/loki
+    extraVolumes:
+      - name: loki-tls-cert
+        secret:
+          secretName: loki-tls
+    extraArgs:
+      - -boltdb.shipper.index-gateway-client.grpc.tls-enabled=true
+      - -boltdb.shipper.index-gateway-client.grpc.tls-ca-path=/tmp/certs/loki/ca.crt
+      - -boltdb.shipper.index-gateway-client.grpc.tls-server-name=loki-gateway
+      - -compactor.grpc-client.tls-enabled=true
+      - -compactor.grpc-client.tls-ca-path=/tmp/certs/loki/ca.crt
+      - -compactor.grpc-client.tls-server-name=loki-gateway
+      - -frontend.grpc-client-config.tls-enabled=true
+      - -frontend.grpc-client-config.tls-ca-path=/tmp/certs/loki/ca.crt
+      - -frontend.grpc-client-config.tls-server-name=loki-gateway
+      - -ingester.client.tls-enabled=true
+      - -ingester.client.tls-ca-path=/tmp/certs/loki/ca.crt
+      - -ingester.client.tls-server-name=loki-gateway
+      - -querier.frontend-grpc-client.tls-enabled=true
+      - -querier.frontend-grpc-client.tls-ca-path=/tmp/certs/loki/ca.crt
+      - -querier.frontend-grpc-client.tls-server-name=loki-gateway
+      - -querier.scheduler-grpc-client.tls-enabled=true
+      - -querier.scheduler-grpc-client.tls-ca-path=/tmp/certs/loki/ca.crt
+      - -querier.scheduler-grpc-client.tls-server-name=loki-gateway
+      - -query-scheduler.grpc-client-config.tls-enabled=true
+      - -query-scheduler.grpc-client-config.tls-ca-path=/tmp/certs/loki/ca.crt
+      - -query-scheduler.grpc-client-config.tls-server-name=loki-gateway
+      - -ruler.client.tls-enabled=true
+      - -ruler.client.tls-ca-path=/tmp/certs/loki/ca.crt
+      - -querier.frontend-grpc-client.tls-server-name=loki-gateway
+      - -tsdb.shipper.index-gateway-client.grpc.tls-enabled=true
+      - -tsdb.shipper.index-gateway-client.grpc.tls-ca-path=/tmp/certs/loki/ca.crt
+      - -tsdb.shipper.index-gateway-client.grpc.tls-server-name=loki-gateway
+  monitoring:
+    selfMonitoring:
+      enabled: false
+      grafanaAgent:
+        installOperator: false
+    lokiCanary:
+      enabled: false
+    dashboards:
+      enabled: false
+    rules:
+      enabled: false
+    serviceMonitor:
+      enabled: false
+  test:
+    enabled: false
+  lokiCanary:
+    enabled: false
+  ruler:
+    enabled: false
+  sidecar:
+    image:
+      registry: docker.io
+      # -- The Docker registry and image for the k8s sidecar
+      repository: kiwigrid/k8s-sidecar
+      # -- Docker image tag
+      tag: 2.5.4
+    rules:
+      enabled: false
+    securityContext:
+      allowPrivilegeEscalation: false
+      capabilities:
+        drop:
+          - ALL
+      readOnlyRootFilesystem: true
+      runAsNonRoot: true
+  tokengen:
+    enabled: false
+  memcached:
+    containerSecurityContext:
+      seccompProfile:
+        type: RuntimeDefault
+mimir:
+  enabled: true
+  image:
+    tag: 2.17.8
+  ruler:
+    enabled: true
+    securityContext:
+      runAsUser: 1000
+      runAsGroup: 1000
+      fsGroup: 1000
+      runAsNonRoot: true
+    # -- The SecurityContext for alertmanager containers
+    containerSecurityContext:
+      allowPrivilegeEscalation: false
+      readOnlyRootFilesystem: true
+      capabilities:
+        drop: [ALL]
+      seccompProfile:
+        type: RuntimeDefault
+    extraVolumes:
+      - name: ruler-config
+        projected:
+          defaultMode: 420
+          sources:
+            - configMap:
+                name: mission-control-ruler-config
+            - configMap:
+                name: mission-control-ruler-custom-config
+    extraVolumeMounts:
+      - name: ruler-config
+        mountPath: /etc/rules/anonymous
+    extraArgs:
+      ruler-storage.backend: local
+      ruler-storage.local.directory: /etc/rules
+      server.http-tls-cert-path: /tmp/certs/mimir/tls.crt
+      server.http-tls-key-path: /tmp/certs/mimir/tls.key
+      server.http-tls-client-auth: NoClientCert
+      server.grpc-tls-cert-path: /tmp/certs/mimir/tls.crt
+      server.grpc-tls-key-path: /tmp/certs/mimir/tls.key
+      server.grpc-tls-client-auth: NoClientCert
+      blocks-storage.bucket-store.chunks-cache.memcached.tls-enabled: true
+      blocks-storage.bucket-store.chunks-cache.memcached.tls-cert-path: /tmp/certs/mimir/tls.crt
+      blocks-storage.bucket-store.chunks-cache.memcached.tls-key-path: /tmp/certs/mimir/tls.key
+      blocks-storage.bucket-store.chunks-cache.memcached.tls-insecure-skip-verify: true
+      blocks-storage.bucket-store.chunks-cache.memcached.tls-server-name: mission-control-mimir
+      blocks-storage.bucket-store.index-cache.memcached.tls-enabled: true
+      blocks-storage.bucket-store.index-cache.memcached.tls-cert-path: /tmp/certs/mimir/tls.crt
+      blocks-storage.bucket-store.index-cache.memcached.tls-key-path: /tmp/certs/mimir/tls.key
+      blocks-storage.bucket-store.index-cache.memcached.tls-insecure-skip-verify: true
+      blocks-storage.bucket-store.index-cache.memcached.tls-server-name: mission-control-mimir
+      blocks-storage.bucket-store.metadata-cache.memcached.tls-enabled: true
+      blocks-storage.bucket-store.metadata-cache.memcached.tls-cert-path: /tmp/certs/mimir/tls.crt
+      blocks-storage.bucket-store.metadata-cache.memcached.tls-key-path: /tmp/certs/mimir/tls.key
+      blocks-storage.bucket-store.metadata-cache.memcached.tls-insecure-skip-verify: true
+      blocks-storage.bucket-store.metadata-cache.memcached.tls-server-name: mission-control-mimir
+      query-frontend.results-cache.memcached.tls-enabled: true
+      query-frontend.results-cache.memcached.tls-cert-path: /tmp/certs/mimir/tls.crt
+      query-frontend.results-cache.memcached.tls-key-path: /tmp/certs/mimir/tls.key
+      query-frontend.results-cache.memcached.tls-insecure-skip-verify: true
+      query-frontend.results-cache.memcached.tls-server-name: mission-control-mimir
+      ruler-storage.cache.memcached.tls-enabled: true
+      ruler-storage.cache.memcached.tls-cert-path: /tmp/certs/mimir/tls.crt
+      ruler-storage.cache.memcached.tls-key-path: /tmp/certs/mimir/tls.key
+      ruler-storage.cache.memcached.tls-insecure-skip-verify: true
+      ruler-storage.cache.memcached.tls-server-name: mission-control-mimir
+      ingester.client.tls-enabled: true
+      ingester.client.tls-cert-path: /tmp/certs/mimir/tls.crt
+      ingester.client.tls-key-path: /tmp/certs/mimir/tls.key
+      ingester.client.tls-insecure-skip-verify: true
+      ingester.client.tls-server-name: mission-control-mimir
+      # Ruler gRPC client used to connect to other ruler instances: -ruler.client.*
+      ruler.client.tls-enabled: true
+      ruler.client.tls-cert-path: /tmp/certs/mimir/tls.crt
+      ruler.client.tls-key-path: /tmp/certs/mimir/tls.key
+      ruler.client.tls-insecure-skip-verify: true
+      ruler.client.tls-server-name: mission-control-mimir
+      # Ruler gRPC client used to connect to query-frontend: -ruler.query-frontend.grpc-client-config.*
+      ruler.query-frontend.grpc-client-config.tls-enabled: true
+      ruler.query-frontend.grpc-client-config.tls-cert-path: /tmp/certs/mimir/tls.crt
+      ruler.query-frontend.grpc-client-config.tls-key-path: /tmp/certs/mimir/tls.key
+      ruler.query-frontend.grpc-client-config.tls-insecure-skip-verify: true
+      ruler.query-frontend.grpc-client-config.tls-server-name: mission-control-mimir
+    readinessProbe:
+      httpGet:
+        scheme: HTTPS
+  global:
+    extraVolumes:
+      - name: mimir-tls-cert
+        secret:
+          secretName: mimir-tls
+    extraVolumeMounts:
+      - name: mimir-tls-cert
+        mountPath: /tmp/certs/mimir
+        readOnly: true
+        # Enable the following when running on openshift
+    # clusterDomain: cluster.local
+    # dnsNamespace: openshift-dns
+    # dnsService: dns-default
+  compactor:
+    securityContext:
+      runAsUser: 1000
+      runAsGroup: 1000
+      fsGroup: 1000
+      runAsNonRoot: true
+    # -- The SecurityContext for alertmanager containers
+    containerSecurityContext:
+      allowPrivilegeEscalation: false
+      readOnlyRootFilesystem: true
+      capabilities:
+        drop: [ALL]
+      seccompProfile:
+        type: RuntimeDefault
+    extraArgs:
+      server.http-tls-cert-path: /tmp/certs/mimir/tls.crt
+      server.http-tls-key-path: /tmp/certs/mimir/tls.key
+      server.http-tls-client-auth: NoClientCert
+      server.grpc-tls-cert-path: /tmp/certs/mimir/tls.crt
+      server.grpc-tls-key-path: /tmp/certs/mimir/tls.key
+      server.grpc-tls-client-auth: NoClientCert
+      blocks-storage.bucket-store.chunks-cache.memcached.tls-enabled: true
+      blocks-storage.bucket-store.chunks-cache.memcached.tls-cert-path: /tmp/certs/mimir/tls.crt
+      blocks-storage.bucket-store.chunks-cache.memcached.tls-key-path: /tmp/certs/mimir/tls.key
+      blocks-storage.bucket-store.chunks-cache.memcached.tls-insecure-skip-verify: true
+      blocks-storage.bucket-store.chunks-cache.memcached.tls-server-name: mission-control-mimir
+      blocks-storage.bucket-store.index-cache.memcached.tls-enabled: true
+      blocks-storage.bucket-store.index-cache.memcached.tls-cert-path: /tmp/certs/mimir/tls.crt
+      blocks-storage.bucket-store.index-cache.memcached.tls-key-path: /tmp/certs/mimir/tls.key
+      blocks-storage.bucket-store.index-cache.memcached.tls-insecure-skip-verify: true
+      blocks-storage.bucket-store.index-cache.memcached.tls-server-name: mission-control-mimir
+      blocks-storage.bucket-store.metadata-cache.memcached.tls-enabled: true
+      blocks-storage.bucket-store.metadata-cache.memcached.tls-cert-path: /tmp/certs/mimir/tls.crt
+      blocks-storage.bucket-store.metadata-cache.memcached.tls-key-path: /tmp/certs/mimir/tls.key
+      blocks-storage.bucket-store.metadata-cache.memcached.tls-insecure-skip-verify: true
+      blocks-storage.bucket-store.metadata-cache.memcached.tls-server-name: mission-control-mimir
+      query-frontend.results-cache.memcached.tls-enabled: true
+      query-frontend.results-cache.memcached.tls-cert-path: /tmp/certs/mimir/tls.crt
+      query-frontend.results-cache.memcached.tls-key-path: /tmp/certs/mimir/tls.key
+      query-frontend.results-cache.memcached.tls-insecure-skip-verify: true
+      query-frontend.results-cache.memcached.tls-server-name: mission-control-mimir
+      ruler-storage.cache.memcached.tls-enabled: true
+      ruler-storage.cache.memcached.tls-cert-path: /tmp/certs/mimir/tls.crt
+      ruler-storage.cache.memcached.tls-key-path: /tmp/certs/mimir/tls.key
+      ruler-storage.cache.memcached.tls-insecure-skip-verify: true
+      ruler-storage.cache.memcached.tls-server-name: mission-control-mimir
+    readinessProbe:
+      httpGet:
+        scheme: HTTPS
+  query_frontend:
+    securityContext:
+      runAsUser: 1000
+      runAsGroup: 1000
+      fsGroup: 1000
+      runAsNonRoot: true
+    # -- The SecurityContext for alertmanager containers
+    containerSecurityContext:
+      allowPrivilegeEscalation: false
+      readOnlyRootFilesystem: true
+      capabilities:
+        drop: [ALL]
+      seccompProfile:
+        type: RuntimeDefault
+    extraArgs:
+      server.http-tls-cert-path: /tmp/certs/mimir/tls.crt
+      server.http-tls-key-path: /tmp/certs/mimir/tls.key
+      server.http-tls-client-auth: NoClientCert
+      server.grpc-tls-cert-path: /tmp/certs/mimir/tls.crt
+      server.grpc-tls-key-path: /tmp/certs/mimir/tls.key
+      server.grpc-tls-client-auth: NoClientCert
+      blocks-storage.bucket-store.chunks-cache.memcached.tls-enabled: true
+      blocks-storage.bucket-store.chunks-cache.memcached.tls-cert-path: /tmp/certs/mimir/tls.crt
+      blocks-storage.bucket-store.chunks-cache.memcached.tls-key-path: /tmp/certs/mimir/tls.key
+      blocks-storage.bucket-store.chunks-cache.memcached.tls-insecure-skip-verify: true
+      blocks-storage.bucket-store.chunks-cache.memcached.tls-server-name: mission-control-mimir
+      blocks-storage.bucket-store.index-cache.memcached.tls-enabled: true
+      blocks-storage.bucket-store.index-cache.memcached.tls-cert-path: /tmp/certs/mimir/tls.crt
+      blocks-storage.bucket-store.index-cache.memcached.tls-key-path: /tmp/certs/mimir/tls.key
+      blocks-storage.bucket-store.index-cache.memcached.tls-insecure-skip-verify: true
+      blocks-storage.bucket-store.index-cache.memcached.tls-server-name: mission-control-mimir
+      blocks-storage.bucket-store.metadata-cache.memcached.tls-enabled: true
+      blocks-storage.bucket-store.metadata-cache.memcached.tls-cert-path: /tmp/certs/mimir/tls.crt
+      blocks-storage.bucket-store.metadata-cache.memcached.tls-key-path: /tmp/certs/mimir/tls.key
+      blocks-storage.bucket-store.metadata-cache.memcached.tls-insecure-skip-verify: true
+      blocks-storage.bucket-store.metadata-cache.memcached.tls-server-name: mission-control-mimir
+      query-frontend.results-cache.memcached.tls-enabled: true
+      query-frontend.results-cache.memcached.tls-cert-path: /tmp/certs/mimir/tls.crt
+      query-frontend.results-cache.memcached.tls-key-path: /tmp/certs/mimir/tls.key
+      query-frontend.results-cache.memcached.tls-insecure-skip-verify: true
+      query-frontend.results-cache.memcached.tls-server-name: mission-control-mimir
+      ruler-storage.cache.memcached.tls-enabled: true
+      ruler-storage.cache.memcached.tls-cert-path: /tmp/certs/mimir/tls.crt
+      ruler-storage.cache.memcached.tls-key-path: /tmp/certs/mimir/tls.key
+      ruler-storage.cache.memcached.tls-insecure-skip-verify: true
+      ruler-storage.cache.memcached.tls-server-name: mission-control-mimir
+      # Query-frontend gRPC client used to connect to query-schedulers: -query-frontend.grpc-client-config.*
+      query-frontend.grpc-client-config.tls-enabled: true
+      query-frontend.grpc-client-config.tls-cert-path: /tmp/certs/mimir/tls.crt
+      query-frontend.grpc-client-config.tls-key-path: /tmp/certs/mimir/tls.key
+      query-frontend.grpc-client-config.tls-insecure-skip-verify: true
+      query-frontend.grpc-client-config.tls-server-name: mission-control-mimir
+    readinessProbe:
+      httpGet:
+        scheme: HTTPS
+  querier:
+    securityContext:
+      runAsUser: 1000
+      runAsGroup: 1000
+      fsGroup: 1000
+      runAsNonRoot: true
+    # -- The SecurityContext for alertmanager containers
+    containerSecurityContext:
+      allowPrivilegeEscalation: false
+      readOnlyRootFilesystem: true
+      capabilities:
+        drop: [ALL]
+      seccompProfile:
+        type: RuntimeDefault
+    extraArgs:
+      server.http-tls-cert-path: /tmp/certs/mimir/tls.crt
+      server.http-tls-key-path: /tmp/certs/mimir/tls.key
+      server.http-tls-client-auth: NoClientCert
+      server.grpc-tls-cert-path: /tmp/certs/mimir/tls.crt
+      server.grpc-tls-key-path: /tmp/certs/mimir/tls.key
+      server.grpc-tls-client-auth: NoClientCert
+      blocks-storage.bucket-store.chunks-cache.memcached.tls-enabled: true
+      blocks-storage.bucket-store.chunks-cache.memcached.tls-cert-path: /tmp/certs/mimir/tls.crt
+      blocks-storage.bucket-store.chunks-cache.memcached.tls-key-path: /tmp/certs/mimir/tls.key
+      blocks-storage.bucket-store.chunks-cache.memcached.tls-insecure-skip-verify: true
+      blocks-storage.bucket-store.chunks-cache.memcached.tls-server-name: mission-control-mimir
+      blocks-storage.bucket-store.index-cache.memcached.tls-enabled: true
+      blocks-storage.bucket-store.index-cache.memcached.tls-cert-path: /tmp/certs/mimir/tls.crt
+      blocks-storage.bucket-store.index-cache.memcached.tls-key-path: /tmp/certs/mimir/tls.key
+      blocks-storage.bucket-store.index-cache.memcached.tls-insecure-skip-verify: true
+      blocks-storage.bucket-store.index-cache.memcached.tls-server-name: mission-control-mimir
+      blocks-storage.bucket-store.metadata-cache.memcached.tls-enabled: true
+      blocks-storage.bucket-store.metadata-cache.memcached.tls-cert-path: /tmp/certs/mimir/tls.crt
+      blocks-storage.bucket-store.metadata-cache.memcached.tls-key-path: /tmp/certs/mimir/tls.key
+      blocks-storage.bucket-store.metadata-cache.memcached.tls-insecure-skip-verify: true
+      blocks-storage.bucket-store.metadata-cache.memcached.tls-server-name: mission-control-mimir
+      query-frontend.results-cache.memcached.tls-enabled: true
+      query-frontend.results-cache.memcached.tls-cert-path: /tmp/certs/mimir/tls.crt
+      query-frontend.results-cache.memcached.tls-key-path: /tmp/certs/mimir/tls.key
+      query-frontend.results-cache.memcached.tls-insecure-skip-verify: true
+      query-frontend.results-cache.memcached.tls-server-name: mission-control-mimir
+      ruler-storage.cache.memcached.tls-enabled: true
+      ruler-storage.cache.memcached.tls-cert-path: /tmp/certs/mimir/tls.crt
+      ruler-storage.cache.memcached.tls-key-path: /tmp/certs/mimir/tls.key
+      ruler-storage.cache.memcached.tls-insecure-skip-verify: true
+      ruler-storage.cache.memcached.tls-server-name: mission-control-mimir
+      ingester.client.tls-enabled: true
+      ingester.client.tls-cert-path: /tmp/certs/mimir/tls.crt
+      ingester.client.tls-key-path: /tmp/certs/mimir/tls.key
+      ingester.client.tls-insecure-skip-verify: true
+      ingester.client.tls-server-name: mission-control-mimir
+      # Querier gRPC client used to connect to store-gateways: -querier.store-gateway-client.*
+      querier.store-gateway-client.tls-enabled: true
+      querier.store-gateway-client.tls-cert-path: /tmp/certs/mimir/tls.crt
+      querier.store-gateway-client.tls-key-path: /tmp/certs/mimir/tls.key
+      querier.store-gateway-client.tls-insecure-skip-verify: true
+      querier.store-gateway-client.tls-server-name: mission-control-mimir
+      # Querier gRPC client used to connect to query-frontends and query-schedulers: -querier.frontend-client.*
+      querier.frontend-client.tls-enabled: true
+      querier.frontend-client.tls-cert-path: /tmp/certs/mimir/tls.crt
+      querier.frontend-client.tls-key-path: /tmp/certs/mimir/tls.key
+      querier.frontend-client.tls-insecure-skip-verify: true
+      querier.frontend-client.tls-server-name: mission-control-mimir
+      # querier client config used to connect to scheduler (this is not mentioned in the docs)
+      querier.scheduler-client.tls-enabled: true
+      querier.scheduler-client.tls-cert-path: /tmp/certs/mimir/tls.crt
+      querier.scheduler-client.tls-key-path: /tmp/certs/mimir/tls.key
+      querier.scheduler-client.tls-insecure-skip-verify: true
+      querier.scheduler-client.tls-server-name: mission-control-mimir
+    readinessProbe:
+      httpGet:
+        scheme: HTTPS
+  query_scheduler:
+    securityContext:
+      runAsUser: 1000
+      runAsGroup: 1000
+      fsGroup: 1000
+      runAsNonRoot: true
+    # -- The SecurityContext for alertmanager containers
+    containerSecurityContext:
+      allowPrivilegeEscalation: false
+      readOnlyRootFilesystem: true
+      capabilities:
+        drop: [ALL]
+      seccompProfile:
+        type: RuntimeDefault
+    extraArgs:
+      server.http-tls-cert-path: /tmp/certs/mimir/tls.crt
+      server.http-tls-key-path: /tmp/certs/mimir/tls.key
+      server.http-tls-client-auth: NoClientCert
+      server.grpc-tls-cert-path: /tmp/certs/mimir/tls.crt
+      server.grpc-tls-key-path: /tmp/certs/mimir/tls.key
+      server.grpc-tls-client-auth: NoClientCert
+      blocks-storage.bucket-store.chunks-cache.memcached.tls-enabled: true
+      blocks-storage.bucket-store.chunks-cache.memcached.tls-cert-path: /tmp/certs/mimir/tls.crt
+      blocks-storage.bucket-store.chunks-cache.memcached.tls-key-path: /tmp/certs/mimir/tls.key
+      blocks-storage.bucket-store.chunks-cache.memcached.tls-insecure-skip-verify: true
+      blocks-storage.bucket-store.chunks-cache.memcached.tls-server-name: mission-control-mimir
+      blocks-storage.bucket-store.index-cache.memcached.tls-enabled: true
+      blocks-storage.bucket-store.index-cache.memcached.tls-cert-path: /tmp/certs/mimir/tls.crt
+      blocks-storage.bucket-store.index-cache.memcached.tls-key-path: /tmp/certs/mimir/tls.key
+      blocks-storage.bucket-store.index-cache.memcached.tls-insecure-skip-verify: true
+      blocks-storage.bucket-store.index-cache.memcached.tls-server-name: mission-control-mimir
+      blocks-storage.bucket-store.metadata-cache.memcached.tls-enabled: true
+      blocks-storage.bucket-store.metadata-cache.memcached.tls-cert-path: /tmp/certs/mimir/tls.crt
+      blocks-storage.bucket-store.metadata-cache.memcached.tls-key-path: /tmp/certs/mimir/tls.key
+      blocks-storage.bucket-store.metadata-cache.memcached.tls-insecure-skip-verify: true
+      blocks-storage.bucket-store.metadata-cache.memcached.tls-server-name: mission-control-mimir
+      query-frontend.results-cache.memcached.tls-enabled: true
+      query-frontend.results-cache.memcached.tls-cert-path: /tmp/certs/mimir/tls.crt
+      query-frontend.results-cache.memcached.tls-key-path: /tmp/certs/mimir/tls.key
+      query-frontend.results-cache.memcached.tls-insecure-skip-verify: true
+      query-frontend.results-cache.memcached.tls-server-name: mission-control-mimir
+      ruler-storage.cache.memcached.tls-enabled: true
+      ruler-storage.cache.memcached.tls-cert-path: /tmp/certs/mimir/tls.crt
+      ruler-storage.cache.memcached.tls-key-path: /tmp/certs/mimir/tls.key
+      ruler-storage.cache.memcached.tls-insecure-skip-verify: true
+      ruler-storage.cache.memcached.tls-server-name: mission-control-mimir
+      # query-scheduler gRPC client used to connect to query-frontends: -query-scheduler.grpc-client-config.*
+      query-scheduler.grpc-client-config.tls-enabled: true
+      query-scheduler.grpc-client-config.tls-cert-path: /tmp/certs/mimir/tls.crt
+      query-scheduler.grpc-client-config.tls-key-path: /tmp/certs/mimir/tls.key
+      query-scheduler.grpc-client-config.tls-insecure-skip-verify: true
+      query-scheduler.grpc-client-config.tls-server-name: mission-control-mimir
+    readinessProbe:
+      httpGet:
+        scheme: HTTPS
+  mimir:
+    structuredConfig:
+      usage_stats:
+        enabled: false
+      frontend_worker:
+        grpc_client_config:
+          tls_enabled: true
+          tls_cert_path: /tmp/certs/mimir/tls.crt
+          tls_key_path: /tmp/certs/mimir/tls.key
+          tls_insecure_skip_verify: true
+          tls_server_name: mission-control-mimir
+    securityContext:
+      runAsUser: 1000
+      runAsGroup: 1000
+      fsGroup: 1000
+      runAsNonRoot: true
+    # -- The SecurityContext for alertmanager containers
+    containerSecurityContext:
+      allowPrivilegeEscalation: false
+      readOnlyRootFilesystem: true
+      capabilities:
+        drop: [ALL]
+      seccompProfile:
+        type: RuntimeDefault
+  ingester:
+    securityContext:
+      runAsUser: 1000
+      runAsGroup: 1000
+      fsGroup: 1000
+      runAsNonRoot: true
+    # -- The SecurityContext for alertmanager containers
+    containerSecurityContext:
+      allowPrivilegeEscalation: false
+      readOnlyRootFilesystem: true
+      capabilities:
+        drop: [ALL]
+      seccompProfile:
+        type: RuntimeDefault
+    zoneAwareReplication:
+      enabled: false
+    extraArgs:
+      ingester.ring.replication-factor: 1
+      ingester.max-global-series-per-user: 0
+      server.http-tls-cert-path: /tmp/certs/mimir/tls.crt
+      server.http-tls-key-path: /tmp/certs/mimir/tls.key
+      server.http-tls-client-auth: NoClientCert
+      server.grpc-tls-cert-path: /tmp/certs/mimir/tls.crt
+      server.grpc-tls-key-path: /tmp/certs/mimir/tls.key
+      server.grpc-tls-client-auth: NoClientCert
+      blocks-storage.bucket-store.chunks-cache.memcached.tls-enabled: true
+      blocks-storage.bucket-store.chunks-cache.memcached.tls-cert-path: /tmp/certs/mimir/tls.crt
+      blocks-storage.bucket-store.chunks-cache.memcached.tls-key-path: /tmp/certs/mimir/tls.key
+      blocks-storage.bucket-store.chunks-cache.memcached.tls-insecure-skip-verify: true
+      blocks-storage.bucket-store.chunks-cache.memcached.tls-server-name: mission-control-mimir
+      blocks-storage.bucket-store.index-cache.memcached.tls-enabled: true
+      blocks-storage.bucket-store.index-cache.memcached.tls-cert-path: /tmp/certs/mimir/tls.crt
+      blocks-storage.bucket-store.index-cache.memcached.tls-key-path: /tmp/certs/mimir/tls.key
+      blocks-storage.bucket-store.index-cache.memcached.tls-insecure-skip-verify: true
+      blocks-storage.bucket-store.index-cache.memcached.tls-server-name: mission-control-mimir
+      blocks-storage.bucket-store.metadata-cache.memcached.tls-enabled: true
+      blocks-storage.bucket-store.metadata-cache.memcached.tls-cert-path: /tmp/certs/mimir/tls.crt
+      blocks-storage.bucket-store.metadata-cache.memcached.tls-key-path: /tmp/certs/mimir/tls.key
+      blocks-storage.bucket-store.metadata-cache.memcached.tls-insecure-skip-verify: true
+      blocks-storage.bucket-store.metadata-cache.memcached.tls-server-name: mission-control-mimir
+      query-frontend.results-cache.memcached.tls-enabled: true
+      query-frontend.results-cache.memcached.tls-cert-path: /tmp/certs/mimir/tls.crt
+      query-frontend.results-cache.memcached.tls-key-path: /tmp/certs/mimir/tls.key
+      query-frontend.results-cache.memcached.tls-insecure-skip-verify: true
+      query-frontend.results-cache.memcached.tls-server-name: mission-control-mimir
+      ruler-storage.cache.memcached.tls-enabled: true
+      ruler-storage.cache.memcached.tls-cert-path: /tmp/certs/mimir/tls.crt
+      ruler-storage.cache.memcached.tls-key-path: /tmp/certs/mimir/tls.key
+      ruler-storage.cache.memcached.tls-insecure-skip-verify: true
+      ruler-storage.cache.memcached.tls-server-name: mission-control-mimir
+    readinessProbe:
+      httpGet:
+        scheme: HTTPS
+  alertmanager:
+    securityContext:
+      runAsUser: 1000
+      runAsGroup: 1000
+      fsGroup: 1000
+      runAsNonRoot: true
+    # -- The SecurityContext for alertmanager containers
+    containerSecurityContext:
+      allowPrivilegeEscalation: false
+      readOnlyRootFilesystem: true
+      capabilities:
+        drop: [ALL]
+      seccompProfile:
+        type: RuntimeDefault
+    extraArgs:
+      server.http-tls-cert-path: /tmp/certs/mimir/tls.crt
+      server.http-tls-key-path: /tmp/certs/mimir/tls.key
+      server.http-tls-client-auth: NoClientCert
+      server.grpc-tls-cert-path: /tmp/certs/mimir/tls.crt
+      server.grpc-tls-key-path: /tmp/certs/mimir/tls.key
+      server.grpc-tls-client-auth: NoClientCert
+      blocks-storage.bucket-store.chunks-cache.memcached.tls-enabled: true
+      blocks-storage.bucket-store.chunks-cache.memcached.tls-cert-path: /tmp/certs/mimir/tls.crt
+      blocks-storage.bucket-store.chunks-cache.memcached.tls-key-path: /tmp/certs/mimir/tls.key
+      blocks-storage.bucket-store.chunks-cache.memcached.tls-insecure-skip-verify: true
+      blocks-storage.bucket-store.chunks-cache.memcached.tls-server-name: mission-control-mimir
+      blocks-storage.bucket-store.index-cache.memcached.tls-enabled: true
+      blocks-storage.bucket-store.index-cache.memcached.tls-cert-path: /tmp/certs/mimir/tls.crt
+      blocks-storage.bucket-store.index-cache.memcached.tls-key-path: /tmp/certs/mimir/tls.key
+      blocks-storage.bucket-store.index-cache.memcached.tls-insecure-skip-verify: true
+      blocks-storage.bucket-store.index-cache.memcached.tls-server-name: mission-control-mimir
+      blocks-storage.bucket-store.metadata-cache.memcached.tls-enabled: true
+      blocks-storage.bucket-store.metadata-cache.memcached.tls-cert-path: /tmp/certs/mimir/tls.crt
+      blocks-storage.bucket-store.metadata-cache.memcached.tls-key-path: /tmp/certs/mimir/tls.key
+      blocks-storage.bucket-store.metadata-cache.memcached.tls-insecure-skip-verify: true
+      blocks-storage.bucket-store.metadata-cache.memcached.tls-server-name: mission-control-mimir
+      query-frontend.results-cache.memcached.tls-enabled: true
+      query-frontend.results-cache.memcached.tls-cert-path: /tmp/certs/mimir/tls.crt
+      query-frontend.results-cache.memcached.tls-key-path: /tmp/certs/mimir/tls.key
+      query-frontend.results-cache.memcached.tls-insecure-skip-verify: true
+      query-frontend.results-cache.memcached.tls-server-name: mission-control-mimir
+      ruler-storage.cache.memcached.tls-enabled: true
+      ruler-storage.cache.memcached.tls-cert-path: /tmp/certs/mimir/tls.crt
+      ruler-storage.cache.memcached.tls-key-path: /tmp/certs/mimir/tls.key
+      ruler-storage.cache.memcached.tls-insecure-skip-verify: true
+      ruler-storage.cache.memcached.tls-server-name: mission-control-mimir
+    readinessProbe:
+      httpGet:
+        scheme: HTTPS
+  distributor:
+    securityContext:
+      runAsUser: 1000
+      runAsGroup: 1000
+      fsGroup: 1000
+      runAsNonRoot: true
+    # -- The SecurityContext for alertmanager containers
+    containerSecurityContext:
+      allowPrivilegeEscalation: false
+      readOnlyRootFilesystem: true
+      capabilities:
+        drop: [ALL]
+      seccompProfile:
+        type: RuntimeDefault
+    extraArgs:
+      server.http-tls-cert-path: /tmp/certs/mimir/tls.crt
+      server.http-tls-key-path: /tmp/certs/mimir/tls.key
+      server.http-tls-client-auth: NoClientCert
+      server.grpc-tls-cert-path: /tmp/certs/mimir/tls.crt
+      server.grpc-tls-key-path: /tmp/certs/mimir/tls.key
+      server.grpc-tls-client-auth: NoClientCert
+      blocks-storage.bucket-store.chunks-cache.memcached.tls-enabled: true
+      blocks-storage.bucket-store.chunks-cache.memcached.tls-cert-path: /tmp/certs/mimir/tls.crt
+      blocks-storage.bucket-store.chunks-cache.memcached.tls-key-path: /tmp/certs/mimir/tls.key
+      blocks-storage.bucket-store.chunks-cache.memcached.tls-insecure-skip-verify: true
+      blocks-storage.bucket-store.chunks-cache.memcached.tls-server-name: mission-control-mimir
+      blocks-storage.bucket-store.index-cache.memcached.tls-enabled: true
+      blocks-storage.bucket-store.index-cache.memcached.tls-cert-path: /tmp/certs/mimir/tls.crt
+      blocks-storage.bucket-store.index-cache.memcached.tls-key-path: /tmp/certs/mimir/tls.key
+      blocks-storage.bucket-store.index-cache.memcached.tls-insecure-skip-verify: true
+      blocks-storage.bucket-store.index-cache.memcached.tls-server-name: mission-control-mimir
+      blocks-storage.bucket-store.metadata-cache.memcached.tls-enabled: true
+      blocks-storage.bucket-store.metadata-cache.memcached.tls-cert-path: /tmp/certs/mimir/tls.crt
+      blocks-storage.bucket-store.metadata-cache.memcached.tls-key-path: /tmp/certs/mimir/tls.key
+      blocks-storage.bucket-store.metadata-cache.memcached.tls-insecure-skip-verify: true
+      blocks-storage.bucket-store.metadata-cache.memcached.tls-server-name: mission-control-mimir
+      query-frontend.results-cache.memcached.tls-enabled: true
+      query-frontend.results-cache.memcached.tls-cert-path: /tmp/certs/mimir/tls.crt
+      query-frontend.results-cache.memcached.tls-key-path: /tmp/certs/mimir/tls.key
+      query-frontend.results-cache.memcached.tls-insecure-skip-verify: true
+      query-frontend.results-cache.memcached.tls-server-name: mission-control-mimir
+      ruler-storage.cache.memcached.tls-enabled: true
+      ruler-storage.cache.memcached.tls-cert-path: /tmp/certs/mimir/tls.crt
+      ruler-storage.cache.memcached.tls-key-path: /tmp/certs/mimir/tls.key
+      ruler-storage.cache.memcached.tls-insecure-skip-verify: true
+      ruler-storage.cache.memcached.tls-server-name: mission-control-mimir
+      ingester.client.tls-enabled: true
+      ingester.client.tls-cert-path: /tmp/certs/mimir/tls.crt
+      ingester.client.tls-key-path: /tmp/certs/mimir/tls.key
+      ingester.client.tls-insecure-skip-verify: true
+      ingester.client.tls-server-name: mission-control-mimir
+    readinessProbe:
+      httpGet:
+        scheme: HTTPS
+  store_gateway:
+    securityContext:
+      runAsUser: 1000
+      runAsGroup: 1000
+      fsGroup: 1000
+      runAsNonRoot: true
+    # -- The SecurityContext for alertmanager containers
+    containerSecurityContext:
+      allowPrivilegeEscalation: false
+      readOnlyRootFilesystem: true
+      capabilities:
+        drop: [ALL]
+      seccompProfile:
+        type: RuntimeDefault
+    zoneAwareReplication:
+      enabled: false
+    extraArgs:
+      server.http-tls-cert-path: /tmp/certs/mimir/tls.crt
+      server.http-tls-key-path: /tmp/certs/mimir/tls.key
+      server.http-tls-client-auth: NoClientCert
+      server.grpc-tls-cert-path: /tmp/certs/mimir/tls.crt
+      server.grpc-tls-key-path: /tmp/certs/mimir/tls.key
+      server.grpc-tls-client-auth: NoClientCert
+      blocks-storage.bucket-store.chunks-cache.memcached.tls-enabled: true
+      blocks-storage.bucket-store.chunks-cache.memcached.tls-cert-path: /tmp/certs/mimir/tls.crt
+      blocks-storage.bucket-store.chunks-cache.memcached.tls-key-path: /tmp/certs/mimir/tls.key
+      blocks-storage.bucket-store.chunks-cache.memcached.tls-insecure-skip-verify: true
+      blocks-storage.bucket-store.chunks-cache.memcached.tls-server-name: mission-control-mimir
+      blocks-storage.bucket-store.index-cache.memcached.tls-enabled: true
+      blocks-storage.bucket-store.index-cache.memcached.tls-cert-path: /tmp/certs/mimir/tls.crt
+      blocks-storage.bucket-store.index-cache.memcached.tls-key-path: /tmp/certs/mimir/tls.key
+      blocks-storage.bucket-store.index-cache.memcached.tls-insecure-skip-verify: true
+      blocks-storage.bucket-store.index-cache.memcached.tls-server-name: mission-control-mimir
+      blocks-storage.bucket-store.metadata-cache.memcached.tls-enabled: true
+      blocks-storage.bucket-store.metadata-cache.memcached.tls-cert-path: /tmp/certs/mimir/tls.crt
+      blocks-storage.bucket-store.metadata-cache.memcached.tls-key-path: /tmp/certs/mimir/tls.key
+      blocks-storage.bucket-store.metadata-cache.memcached.tls-insecure-skip-verify: true
+      blocks-storage.bucket-store.metadata-cache.memcached.tls-server-name: mission-control-mimir
+      query-frontend.results-cache.memcached.tls-enabled: true
+      query-frontend.results-cache.memcached.tls-cert-path: /tmp/certs/mimir/tls.crt
+      query-frontend.results-cache.memcached.tls-key-path: /tmp/certs/mimir/tls.key
+      query-frontend.results-cache.memcached.tls-insecure-skip-verify: true
+      query-frontend.results-cache.memcached.tls-server-name: mission-control-mimir
+      ruler-storage.cache.memcached.tls-enabled: true
+      ruler-storage.cache.memcached.tls-cert-path: /tmp/certs/mimir/tls.crt
+      ruler-storage.cache.memcached.tls-key-path: /tmp/certs/mimir/tls.key
+      ruler-storage.cache.memcached.tls-insecure-skip-verify: true
+      ruler-storage.cache.memcached.tls-server-name: mission-control-mimir
+      querier.store-gateway-client.tls-enabled: true
+      querier.store-gateway-client.tls-cert-path: /tmp/certs/mimir/tls.crt
+      querier.store-gateway-client.tls-key-path: /tmp/certs/mimir/tls.key
+      querier.store-gateway-client.tls-insecure-skip-verify: true
+      querier.store-gateway-client.tls-server-name: mission-control-mimir
+    readinessProbe:
+      httpGet:
+        scheme: HTTPS
+  rollout_operator:
+    enabled: false
+  alertmanagerConfig: |
+    global:
+      resolve_timeout: 5m
+    route:
+      group_by: ['alertname', 'instance']
+      group_wait: 30s
+      group_interval: 5m
+      repeat_interval: 12h
+      receiver: 'default-receiver'
+    receivers:
+      - name: 'default-receiver'
+  minio:
+    image:
+      tag: RELEASE.2025-09-07T16-13-09Z
+    mcImage:
+      tag: RELEASE.2025-08-13T08-35-41Z
+    securityContext:
+      enabled: true
+      runAsUser: 1000
+      runAsGroup: 1000
+      fsGroup: 1000
+      runAsNonRoot: true
+      fsGroupChangePolicy: "OnRootMismatch"
+    containerSecurityContext:
+      readOnlyRootFilesystem: true
+  nginx:
+    enabled: false
+  gateway:
+    # needed so the nginx config template works correctly
+    enabledNonEnterprise: true
+    service:
+      port: 443
+    readinessProbe:
+      httpGet:
+        scheme: HTTPS
+        port: http-metrics
+    nginx:
+      image:
+        tag: 1.29-alpine3.22-slim
+      config:
+        serverSnippet: |
+          ssl_certificate /tmp/certs/mimir/tls.crt;
+          ssl_certificate_key /tmp/certs/mimir/tls.key;
+          proxy_ssl_trusted_certificate /tmp/certs/mimir/ca.crt;
+          proxy_ssl_server_name on;
+          proxy_ssl_name mission-control-mimir;
+          proxy_ssl_verify on;
+        file: |
+          worker_processes  5;  ## Default: 1
+          error_log  /dev/stderr {{ .Values.gateway.nginx.config.errorLogLevel }};
+          pid        /tmp/nginx.pid;
+          worker_rlimit_nofile 8192;
+
+          events {
+            worker_connections  4096;  ## Default: 1024
+          }
+
+          http {
+            client_body_temp_path /tmp/client_temp;
+            proxy_temp_path       /tmp/proxy_temp_path;
+            fastcgi_temp_path     /tmp/fastcgi_temp;
+            uwsgi_temp_path       /tmp/uwsgi_temp;
+            scgi_temp_path        /tmp/scgi_temp;
+
+            default_type application/octet-stream;
+            log_format   {{ .Values.gateway.nginx.config.logFormat }}
+
+            {{- if .Values.gateway.nginx.verboseLogging }}
+            access_log   /dev/stderr  main;
+            {{- else }}
+
+            map $status $loggable {
+              ~^[23]  0;
+              default 1;
+            }
+            access_log   {{ .Values.gateway.nginx.config.accessLogEnabled | ternary "/dev/stderr  main  if=$loggable;" "off;" }}
+            {{- end }}
+
+            sendfile           on;
+            tcp_nopush         on;
+            proxy_http_version 1.1;
+
+            {{- if .Values.gateway.nginx.config.resolver }}
+            resolver {{ .Values.gateway.nginx.config.resolver }};
+            {{- else }}
+            resolver {{ .Values.global.dnsService }}.{{ .Values.global.dnsNamespace }}.svc.{{ .Values.global.clusterDomain }};
+            {{- end }}
+
+            {{- with .Values.gateway.nginx.config.httpSnippet }}
+            {{ . | nindent 2 }}
+            {{- end }}
+
+            # Ensure that X-Scope-OrgID is always present, default to the no_auth_tenant for backwards compatibility when multi-tenancy was turned off.
+            map $http_x_scope_orgid $ensured_x_scope_orgid {
+              default $http_x_scope_orgid;
+              "" "{{ include "mimir.noAuthTenant" . }}";
+            }
+
+            map $http_x_scope_orgid $has_multiple_orgid_headers {
+              default 0;
+              "~^.+,.+$" 1;
+            }
+
+            proxy_read_timeout 300;
+            server {
+              listen {{ include "mimir.serverHttpListenPort" . }} ssl;
+              {{- if .Values.gateway.nginx.config.enableIPv6 }}
+              listen [::]:{{ include "mimir.serverHttpListenPort" . }} ssl;
+              {{- end }}
+
+              {{- if .Values.gateway.nginx.config.clientMaxBodySize }}
+              client_max_body_size {{ .Values.gateway.nginx.config.clientMaxBodySize }};
+              {{- end }}
+
+              {{- if .Values.gateway.nginx.basicAuth.enabled }}
+              auth_basic           "Mimir";
+              auth_basic_user_file /etc/nginx/secrets/.htpasswd;
+              {{- end }}
+
+              if ($has_multiple_orgid_headers = 1) {
+                  return 400 'Sending multiple X-Scope-OrgID headers is not allowed. Use a single header with | as separator instead.';
+              }
+
+              location = / {
+                return 200 'OK';
+                auth_basic off;
+              }
+
+              location = /ready {
+                return 200 'OK';
+                auth_basic off;
+              }
+
+              proxy_set_header X-Scope-OrgID $ensured_x_scope_orgid;
+
+              # Distributor endpoints
+              location /distributor {
+                set $distributor {{ template "mimir.fullname" . }}-distributor-headless.{{ .Release.Namespace }}.svc.{{ .Values.global.clusterDomain }};
+                proxy_pass      https://$distributor:{{ include "mimir.serverHttpListenPort" . }}$request_uri;
+              }
+              location = /api/v1/push {
+                set $distributor {{ template "mimir.fullname" . }}-distributor-headless.{{ .Release.Namespace }}.svc.{{ .Values.global.clusterDomain }};
+                proxy_pass      https://$distributor:{{ include "mimir.serverHttpListenPort" . }}$request_uri;
+              }
+              location /otlp/v1/metrics {
+                set $distributor {{ template "mimir.fullname" . }}-distributor-headless.{{ .Release.Namespace }}.svc.{{ .Values.global.clusterDomain }};
+                proxy_pass      https://$distributor:{{ include "mimir.serverHttpListenPort" . }}$request_uri;
+              }
+
+              # Alertmanager endpoints
+              location {{ template "mimir.alertmanagerHttpPrefix" . }} {
+                set $alertmanager {{ template "mimir.fullname" . }}-alertmanager-headless.{{ .Release.Namespace }}.svc.{{ .Values.global.clusterDomain }};
+                proxy_pass      https://$alertmanager:{{ include "mimir.serverHttpListenPort" . }}$request_uri;
+              }
+              location = /multitenant_alertmanager/status {
+                set $alertmanager {{ template "mimir.fullname" . }}-alertmanager-headless.{{ .Release.Namespace }}.svc.{{ .Values.global.clusterDomain }};
+                proxy_pass      https://$alertmanager:{{ include "mimir.serverHttpListenPort" . }}$request_uri;
+              }
+              location = /multitenant_alertmanager/configs {
+                set $alertmanager {{ template "mimir.fullname" . }}-alertmanager-headless.{{ .Release.Namespace }}.svc.{{ .Values.global.clusterDomain }};
+                proxy_pass      https://$alertmanager:{{ include "mimir.serverHttpListenPort" . }}$request_uri;
+              }
+              location = /api/v1/alerts {
+                set $alertmanager {{ template "mimir.fullname" . }}-alertmanager-headless.{{ .Release.Namespace }}.svc.{{ .Values.global.clusterDomain }};
+                proxy_pass      https://$alertmanager:{{ include "mimir.serverHttpListenPort" . }}$request_uri;
+              }
+
+              # Ruler endpoints
+              location {{ template "mimir.prometheusHttpPrefix" . }}/config/v1/rules {
+                set $ruler {{ template "mimir.fullname" . }}-ruler.{{ .Release.Namespace }}.svc.{{ .Values.global.clusterDomain }};
+                proxy_pass      https://$ruler:{{ include "mimir.serverHttpListenPort" . }}$request_uri;
+              }
+              location {{ template "mimir.prometheusHttpPrefix" . }}/api/v1/rules {
+                set $ruler {{ template "mimir.fullname" . }}-ruler.{{ .Release.Namespace }}.svc.{{ .Values.global.clusterDomain }};
+                proxy_pass      https://$ruler:{{ include "mimir.serverHttpListenPort" . }}$request_uri;
+              }
+
+              location {{ template "mimir.prometheusHttpPrefix" . }}/api/v1/alerts {
+                set $ruler {{ template "mimir.fullname" . }}-ruler.{{ .Release.Namespace }}.svc.{{ .Values.global.clusterDomain }};
+                proxy_pass      https://$ruler:{{ include "mimir.serverHttpListenPort" . }}$request_uri;
+              }
+
+              location = /ruler/ring {
+                set $ruler {{ template "mimir.fullname" . }}-ruler.{{ .Release.Namespace }}.svc.{{ .Values.global.clusterDomain }};
+                proxy_pass      https://$ruler:{{ include "mimir.serverHttpListenPort" . }}$request_uri;
+              }
+
+              # Rest of {{ template "mimir.prometheusHttpPrefix" . }} goes to the query frontend
+              location {{ template "mimir.prometheusHttpPrefix" . }} {
+                set $query_frontend {{ template "mimir.fullname" . }}-query-frontend.{{ .Release.Namespace }}.svc.{{ .Values.global.clusterDomain }};
+                proxy_pass      https://$query_frontend:{{ include "mimir.serverHttpListenPort" . }}$request_uri;
+              }
+
+              # Buildinfo endpoint can go to any component
+              location = /api/v1/status/buildinfo {
+                set $query_frontend {{ template "mimir.fullname" . }}-query-frontend.{{ .Release.Namespace }}.svc.{{ .Values.global.clusterDomain }};
+                proxy_pass      https://$query_frontend:{{ include "mimir.serverHttpListenPort" . }}$request_uri;
+              }
+
+              # Compactor endpoint for uploading blocks
+              location /api/v1/upload/block/ {
+                set $compactor {{ template "mimir.fullname" . }}-compactor.{{ .Release.Namespace }}.svc.{{ .Values.global.clusterDomain }};
+                proxy_pass      https://$compactor:{{ include "mimir.serverHttpListenPort" . }}$request_uri;
+              }
+
+              {{- with .Values.gateway.nginx.config.serverSnippet }}
+              {{ . | nindent 4 }}
+              {{- end }}
+            }
+          }
+grafana:
+  enabled: false
+  image:
+    tag: "12.1.10"
+  # This subchart security context is already secure by default
+  # https://github.com/grafana/helm-charts/blob/main/charts/grafana/values.yaml#L148-L160
+  testFramework:
+    enabled: false
+  sidecar:
+    datasources:
+      enabled: true
+      reloadURL: "https://localhost:3000/api/admin/provisioning/datasources/reload"
+      skipTlsVerify: true
+      env:
+        REQUESTS_CA_BUNDLE: /tmp/certs/grafana/ca.crt
+      extraMounts:
+        - name: mimir-tls
+          mountPath: /tmp/certs/mimir
+          readOnly: true
+        - name: loki-tls
+          mountPath: /tmp/certs/loki
+          readOnly: true
+        - name: grafana-tls
+          mountPath: /tmp/certs/grafana
+          readOnly: true
+    alerts:
+      enabled: false
+    dashboards:
+      enabled: true
+      reloadURL: "https://localhost:3000/api/admin/provisioning/dashboards/reload"
+      env:
+        REQUESTS_CA_BUNDLE: /tmp/certs/grafana/ca.crt
+      extraMounts:
+        - name: grafana-tls
+          mountPath: /tmp/certs/grafana
+          readOnly: true
+    image:
+      registry: docker.io
+      # -- The Docker registry and image for the k8s sidecar
+      repository: kiwigrid/k8s-sidecar
+      # -- Docker image tag
+      tag: 2.5.4
+  initChownData:
+    enabled: false
+  grafana.ini:
+    analytics:
+      reporting_enabled: false
+      check_for_updates: false
+    server:
+      # root_url: https://localhost:3000
+      cert_key: /etc/grafana/ssl/tls.key
+      cert_file: /etc/grafana/ssl/tls.crt
+      protocol: https
+  plugins:
+    - grafana-polystat-panel
+  readinessProbe:
+    httpGet:
+      scheme: HTTPS
+  livenessProbe:
+    httpGet:
+      scheme: HTTPS
+  extraSecretMounts:
+    - name: loki-tls
+      mountPath: /tmp/certs/loki
+      secretName: loki-tls
+      readOnly: true
+    - name: grafana-tls
+      mountPath: /etc/grafana/ssl
+      secretName: grafana-tls
+      readOnly: true
+    - name: mimir-tls
+      mountPath: /tmp/certs/mimir
+      secretName: mimir-tls
+      readOnly: true
+k8ssandra-operator:
+  disableCrdUpgraderJob: true
+  podSecurityContext:
+    runAsNonRoot: true
+  securityContext:
+    allowPrivilegeEscalation: false
+    capabilities:
+      drop:
+        - ALL
+    seccompProfile:
+      type: RuntimeDefault
+  cass-operator:
+    podSecurityContext:
+      runAsNonRoot: true
+    securityContext:
+      allowPrivilegeEscalation: false
+      readOnlyRootFilesystem: true
+      capabilities:
+        drop:
+          - ALL
+      seccompProfile:
+        type: RuntimeDefault
+    disableCertManagerCheck: true
+replicated:
+  enabled: true
+  # replicated sdk helm chart is secure by default
+
+  appName: Mission Control
+  channelID: 2H67dYyYBUwE2uwmKVJ5IfpTkmA
+  channelName: Stable
+  channelSequence: 38
+  integration:
+    enabled: false
+  license: |
+    apiVersion: kots.io/v1beta1
+    kind: License
+    metadata:
+        name: ibm-michelderu
+    spec:
+        appSlug: mission-control
+        channelID: 2H67dYyYBUwE2uwmKVJ5IfpTkmA
+        channelName: Stable
+        channels:
+            - channelID: 2H67dYyYBUwE2uwmKVJ5IfpTkmA
+              channelName: Stable
+              channelSlug: stable
+              endpoint: https://replicated.app
+              isDefault: true
+              isSemverRequired: true
+              replicatedProxyDomain: proxy.replicated.com
+        customerEmail: michel.deru@ibm.com
+        customerName: IBM - Michel De Ru
+        endpoint: https://replicated.app
+        entitlements:
+            expires_at:
+                description: License Expiration
+                signature:
+                    v1: UttOTvuxgDM4o4mqt7UpLrxbURN1mBQtt926dbEObL8pJtxW76Na+JVVDPoWV24XBhnTm3BYfzT9puCPkDokPezG8gxJo9rmYvfTkJVVOOkywo8QD09EIJw77XATFAIBtLsIVE+NJat6vf1kHpoND5iY3OFcWTIziYb9Nt6I48qPLSoQxuYZyIHM7zbxxY38HwvXPfrqMNxLgS/RoKZrY89ikOqnuQG28PRtC2JeTOrMA9a9u+1WE746KKwOXkO1H7q+Wi5xIo6w6MEt54IcKn2fekDzn5bSR9I9PuGDGw8OP9615LKS1TRZkqViwC16SqZpeAFtgE7XA2p1e6DN9A==
+                title: Expiration
+                value: ""
+                valueType: String
+        isEmbeddedClusterDownloadEnabled: true
+        isEmbeddedClusterMultiNodeEnabled: true
+        isKotsInstallEnabled: true
+        isSemverRequired: true
+        isSupportBundleUploadSupported: true
+        licenseID: 39swrs6vpjYuVafSOMc9QPZTNCR
+        licenseSequence: 1
+        licenseType: dev
+        replicatedProxyDomain: proxy.replicated.com
+        signature: eyJsaWNlbnNlRGF0YSI6ImV5SmhjR2xXWlhKemFXOXVJam9pYTI5MGN5NXBieTkyTVdKbGRHRXhJaXdpYTJsdVpDSTZJa3hwWTJWdWMyVWlMQ0p0WlhSaFpHRjBZU0k2ZXlKdVlXMWxJam9pYVdKdExXMXBZMmhsYkdSbGNuVWlmU3dpYzNCbFl5STZleUpzYVdObGJuTmxTVVFpT2lJek9YTjNjbk0yZG5CcVdYVldZV1pUVDAxak9WRlFXbFJPUTFJaUxDSnNhV05sYm5ObFZIbHdaU0k2SW1SbGRpSXNJbU4xYzNSdmJXVnlUbUZ0WlNJNklrbENUU0F0SUUxcFkyaGxiQ0JFWlNCU2RTSXNJbUZ3Y0ZOc2RXY2lPaUp0YVhOemFXOXVMV052Ym5SeWIyd2lMQ0pqYUdGdWJtVnNTVVFpT2lJeVNEWTNaRmw1V1VKVmQwVXlkWGR0UzFaS05VbG1jRlJyYlVFaUxDSmphR0Z1Ym1Wc1RtRnRaU0k2SWxOMFlXSnNaU0lzSW1OMWMzUnZiV1Z5UlcxaGFXd2lPaUp0YVdOb1pXd3VaR1Z5ZFVCcFltMHVZMjl0SWl3aVkyaGhibTVsYkhNaU9sdDdJbU5vWVc1dVpXeEpSQ0k2SWpKSU5qZGtXWGxaUWxWM1JUSjFkMjFMVmtvMVNXWndWR3R0UVNJc0ltTm9ZVzV1Wld4VGJIVm5Jam9pYzNSaFlteGxJaXdpWTJoaGJtNWxiRTVoYldVaU9pSlRkR0ZpYkdVaUxDSnBjMFJsWm1GMWJIUWlPblJ5ZFdVc0ltVnVaSEJ2YVc1MElqb2lhSFIwY0hNNkx5OXlaWEJzYVdOaGRHVmtMbUZ3Y0NJc0luSmxjR3hwWTJGMFpXUlFjbTk0ZVVSdmJXRnBiaUk2SW5CeWIzaDVMbkpsY0d4cFkyRjBaV1F1WTI5dElpd2lhWE5UWlcxMlpYSlNaWEYxYVhKbFpDSTZkSEoxWlgxZExDSnNhV05sYm5ObFUyVnhkV1Z1WTJVaU9qRXNJbVZ1WkhCdmFXNTBJam9pYUhSMGNITTZMeTl5WlhCc2FXTmhkR1ZrTG1Gd2NDSXNJbkpsY0d4cFkyRjBaV1JRY205NGVVUnZiV0ZwYmlJNkluQnliM2g1TG5KbGNHeHBZMkYwWldRdVkyOXRJaXdpWlc1MGFYUnNaVzFsYm5SeklqcDdJbVY0Y0dseVpYTmZZWFFpT25zaWRHbDBiR1VpT2lKRmVIQnBjbUYwYVc5dUlpd2laR1Z6WTNKcGNIUnBiMjRpT2lKTWFXTmxibk5sSUVWNGNHbHlZWFJwYjI0aUxDSjJZV3gxWlNJNklpSXNJblpoYkhWbFZIbHdaU0k2SWxOMGNtbHVaeUlzSW5OcFoyNWhkSFZ5WlNJNmV5SjJNU0k2SWxWMGRFOVVkblY0WjBSTk5HODBiWEYwTjFWd1RISjRZbFZTVGpGdFFsRjBkRGt5Tm1SaVJVOWlURGh3U25SNFZ6YzJUbUVyU2xaV1JGQnZWMVl5TkZoQ2FHNVViVE5DV1daNlZEbHdkVU5RYTBSdmExQmxla2M0WjNoS2J6bHliVmwyWmxSclNsWldUMDlyZVhkdk9GRkVNRGxGU1VwM056ZFlRVlJHUVVsQ2RFeHpTVlpGSzA1S1lYUTJkbVl4YTBod2IwNUVOV2xaTTA5R1kxZFVTWHBwV1dJNVRuUTJTVFE0Y1ZCTVUyOVJlSFZaV25sSlNFMDNlbUo0ZUZrek9FaDNkbGhRWm5KeFRVNTRUR2RUTDFKdlMxcHlXVGc1YVd0UGNXNTFVVWN5T0ZCU2RFTXlTbVZVVDNKTlFUbGhPWFVyTVZkRk56UTJTMHQzVDFoclR6RklOM0VyVjJrMWVFbHZObmMyVFVWME5UUkpZMHR1TW1abGEwUjZialZpVTFJNVNUbFFkVWRFUjNjNFQxQTVOakUxVEV0VE1WUlNXbXR4Vm1sM1F6RTJVM0ZhY0dWQlJuUm5SVGRZUVRKd01XVTJSRTQ1UVQwOUluMTlmU3dpYVhOVGRYQndiM0owUW5WdVpHeGxWWEJzYjJGa1UzVndjRzl5ZEdWa0lqcDBjblZsTENKcGMwVnRZbVZrWkdWa1EyeDFjM1JsY2tSdmQyNXNiMkZrUlc1aFlteGxaQ0k2ZEhKMVpTd2lhWE5GYldKbFpHUmxaRU5zZFhOMFpYSk5kV3gwYVU1dlpHVkZibUZpYkdWa0lqcDBjblZsTENKcGMwdHZkSE5KYm5OMFlXeHNSVzVoWW14bFpDSTZkSEoxWlN3aWFYTlRaVzEyWlhKU1pYRjFhWEpsWkNJNmRISjFaWDE5IiwiaW5uZXJTaWduYXR1cmUiOiJleUpzYVdObGJuTmxVMmxuYm1GMGRYSmxJam9pYjJwNmEzUnlXbWxHYlZKeVYwdERaR2hzTkRsaGVXOHpUVFV5Y1c5U1ozUnlUbnA2WVhwb1ZqbDZjSE5pV1d0M1ZFbFBaREpOUzJ0dk9ERnJaMHc1V0hwaUt6aERWa1ZoTUZCQlpVdEliRXgzUWxCUWFrRTNXbnBMTWxOWk4wd3dLeXRtYWpseFQxa3pWbXhEZUVNelpFZzVaekV6VUVJeVdrODRjV0ZHVmpGMGIxQldNQzkwUVM5R1kwcFhZazFDWldkVFVWWnRXbGRTWkZWc1YzbHFaRTlyY0UxYVJYTllja2RYU2t4cE4zWnlNVlowY2taWVNHTmFkekJOZERGbWIyNUdhbmRvVDB0Q1FWRlZUa1JuWTNoNE1VUkJVR0V4Ukc5eldVWlJTV2xWWm1jNWNYWlBhemx0U1RaM09WZG1aRWwwYzJGVmN6Uk1MMDl6ZWxWVVdscHNTVU0yUVdob2VsaFRVamRNU1RobUwwZFFUV2RzU3pWNmIzUnVTbFI1TjBoeGVqVlJVVXBFZWxOeVRWaHBZazR6Vkc4NVYweHRkSGQxU1ZCNFNtUnhaaTlqZVV4TVpDdDJXRUZMVFU5d2NXUndNWHAzUFQwaUxDSndkV0pzYVdOTFpYa2lPaUl0TFMwdExVSkZSMGxPSUZCVlFreEpReUJMUlZrdExTMHRMVnh1VFVsSlFrbHFRVTVDWjJ0eGFHdHBSemwzTUVKQlVVVkdRVUZQUTBGUk9FRk5TVWxDUTJkTFEwRlJSVUZ4Uld4MFRHZEtLM0E1YlhaVVIwWTNaV0pZWTF4dVkyNHhOMHBGWTNaR04ybEdSRU5RYVUxbGMySnhkRlo0U3pZM1ZWTmFVR1ZuTTFWck9FcEJjVzFDTkdwTGFtZHNlR3BKUVcxeVkzSjFZMEV3Vm1WdFZGeHVOVUpCTjNaTmFGaE9TMnBoZERsSFZtMUlXa3BCZVdGTVlXeGxheXR3ZFhZMVRYbFJPV2swTVVkclQwWlhPVFpGV1RaTFJsbDZPRlJPUVZSUGJreGxlVnh1V0VsVVdUZFBLemRPTlRRNWNuTnpOWGxZU0VWdVJrRmhUbTU2Y1ZsS1dFZFhUSGQwVW5ReFRYcFNaVTB3Y2swMVZ6VTBXV1ZuTkVOUVFsZG1aeXQ1Y2x4dU9YVjBaV1Y1UWxwTUwwaG9PR05HWTFoa1pYZ3JhRkl5VGl0cFFpOTFWemRuZUVoMWVrNVBXSGRJTUVkb1ZWaFNNWEJEVlZBd1ZucFZPWE5oZURkaloxeHViRXBUYUZsdFNXbEdiWGRtTW1Sb2FXNXVZazFwVlRaaVpFNHhkelExVDFwcE9GZHZjVGt3UmxrelVGaE1WRGRRY1dGVldVZHJVSEJTZHpVNFUxUXJSVnh1SzNkSlJFRlJRVUpjYmkwdExTMHRSVTVFSUZCVlFreEpReUJMUlZrdExTMHRMVnh1SWl3aWEyVjVVMmxuYm1GMGRYSmxJam9pWlhsS2VtRlhaSFZaV0ZJeFkyMVZhVTlwU2xGWmJtc3hWbTVHV21WVlRsSmlSMDB6WWtaa1JHRkhiRWhNTUZwb1dtbDBNVlpVUmpSU2JGWkNWVVJTVDFsWWJEVmlhM1JNVTJwV1VHRkhjRFpSYlhCaFZqTnNVVlZZYXpKVE1HUjZXa1JXY0U1Nll6SmxSMlJSVVdwb1lWRXdiRFpUYkZreVZrWlNSbG93TkRWTk1FNU1XVlpDZWxkRVVuRlJWa3BEU3pKU1FtVlhUa2xSZWtwcFVqTndhazVET1ZOUFIxcHJWa001V1ZreWVEVlVNbEpyV21zeGFWWkhWa2xQUkd4T1pVY3hkMVJGZUZWalIzaEZZekJuZDAxRmVEQkxNbXhHVTBSSmRrMURPSEpPUnpoeVZWZGFRMVV4Umxoa01VWlJXVlJPV0dFd1NsWlVXRUY0VlZSc00xVXlNVVZSYldSU1kwZGFjMlZ0VFhKV01qbFpUbXRPY1dGV2FHOU9iWEF4VERCVk1WcHRkSEJMTW5Nd1V6SXhWR1ZHUW5oVVEzUjFVVE5PUmxGWFVuTlZWMDVoVFVaU2JsWlVTbUZXYWs0elZXdDRUbGxzVFhsT2JXeHFVMnBhVm1ONlFsQlNNalZEVW1wQk0yTlZjREZrVjJ4eFZqTkNSVlo2WkRSaE1GbDZVbGhLU2xSV1VUVlRlazF5WVRCS1JrMUdWVEZpUmtrd1RrWm9kMDFIWTNwV1Z6VkdXVlZPUkdOWFJqSlpXSEJ6VVZoVk5GZHRTbmhoTTBWMlUwY3hhMVpZUW5sa2JGSlhWRmN4U0ZacE9VeFNXRlp3VTNwb05WcEhZemxRVTBselNXMWtjMkl5U21oaVJYUnNaVlZzYTBscWIybFpiVkpzV2xSVk1rNVVXWGRaTWxwcFRrUk9hazlYU1hsUFIwcHRUMVJvYkZsWFRtaGFiVVV5VGtSWmFXWlJQVDBpZlE9PSJ9
+  parentChartURL: oci://registry.replicated.com/mission-control/stable/mission-control
+  releaseCreatedAt: "2026-04-03T16:21:08Z"
+  releaseImages:
+    - 559669398656.dkr.ecr.us-west-2.amazonaws.com/engops-shared/hcd/prod/hcd:1.2.5-ubi
+    - 559669398656.dkr.ecr.us-west-2.amazonaws.com/mission-control/cql-router:ed96e7c4
+    - 559669398656.dkr.ecr.us-west-2.amazonaws.com/mission-control/cqlsh-pod:d6dcf587
+    - datastax/cass-config-builder:1.0-ubi
+    - datastax/dse-mgmtapi-6_8:6.8.63-ubi
+    - datastax/dse-mgmtapi-6_8:6.9.20-ubi
+    - docker.io/datastax/mission-control-dex:v1.18.0
+    - docker.io/datastax/mission-control-ui:v1.18.0
+    - docker.io/datastax/mission-control:v1.18.0
+    - docker.io/grafana/grafana:12.1.10
+    - docker.io/grafana/loki-canary:3.5.12
+    - docker.io/grafana/loki:3.5.2
+    - docker.io/k8ssandra/cass-operator:v1.30.0
+    - docker.io/k8ssandra/k8ssandra-client:mission-control-1.18.0
+    - docker.io/k8ssandra/k8ssandra-operator:v1.31.0
+    - docker.io/kiwigrid/k8s-sidecar:2.5.4
+    - docker.io/nginxinc/nginx-unprivileged:1.29-alpine3.22-slim
+    - grafana/mimir:2.17.8
+    - haproxytech/kubernetes-ingress:3.1.12
+    - k8ssandra/cass-management-api:4.0.19-ubi
+    - k8ssandra/cass-management-api:4.1.10-ubi
+    - k8ssandra/cass-management-api:5.0.6-ubi
+    - k8ssandra/k8ssandra-client:v0.8.10
+    - k8ssandra/medusa:0.27.1
+    - k8ssandra/system-logger:v1.30.0
+    - proxy.replicated.com/library/replicated-sdk-image:1.8.0
+    - quay.io/minio/mc:RELEASE.2025-08-13T08-35-41Z
+    - quay.io/minio/minio:RELEASE.2025-09-07T16-13-09Z
+    - registry.k8s.io/kube-state-metrics/kube-state-metrics:v2.18.0
+    - stargateio/data-api:v1.0.40
+    - thelastpickle/cassandra-reaper:4.1.1
+    - timberio/vector:0.54.0-distroless-libc
+  releaseNotes: |-
+    ## 1.18.0 - 2026-04-03
+
+    * [CHANGE] Upgrade Medusa to v0.27.1
+    * [CHANGE] Remove memcached-exporter and memcached from kots to fix CVEs
+    * [CHANGE] Upgrade kube-state-metrics to 2.18.0 (chart version 7.2.2)
+    * [CHANGE] Upgrade Mimir to v2.17.8
+    * [CHANGE] Upgrade k8ssandra-client to v0.8.10
+    * [CHANGE] Upgrade Grafana to 12.1.10
+    * [CHANGE] Upgrade loki to v3.5.12 and k8s-sidecar to 2.5.4
+    * [CHANGE] Upgrade k8ssandra-operator to v1.31.0
+    * [CHANGE] [#2557] Remove cass-operator-metrics service and the Vector aggregator source for it.
+    * [CHANGE] [#2409] Don't create the SA and the cluster role binding to watch CassDCs in the embedded mode
+    * [CHANGE] [#2625] Bump dex base image to 2.45.1
+    * [CHANGE] [#2597] Replace the default Vector ingress from NodePort to Ingress.
+    * [FEATURE] [#2429] Create Ingress objects for platform services (UI, Grafana)
+    * [FEATURE] [#1735] Add support for ingress based CQL gateways in the UI, and display a link to download the secure connect bundle.
+    * [FEATURE] [#2592] Add a ConfigMap to hold Ingress configuration
+    * [BUGFIX] [#2608] Fix issues with CqlConnectivity ingress on OpenShift
+    * [BUGFIX] [#2618] Fix support for using custom root CAs and Issuers
+    * [BUGFIX] [#2626] Upgrade data-api to fix CVEs
+    * [BUGFIX] [#2679] Fix ingress domain in Openshift installations
+    * [BUGFIX] [#2719] Upgrade go version to 1.25.8 to fix CVEs
+  releaseSequence: 8274
+  replicatedAppEndpoint: https://replicated.app
+  versionLabel: v1.18.0
+kubernetes-ingress:
+  enabled: false
+  controller:
+    replicaCount: 1
+    # This enables the security context for the ingress controller
+    unprivileged: true
+    service:
+      type: LoadBalancer
+      annotations: {}
+      labels: {}
+      ports:
+        http: 8080
+        https: 443
+        stat: 1024
+      enablePorts:
+        quic: false
+        http: false
+        stat: false
+        https: true
+        prometheus: false
+  kube-state-metrics:
+    # This subchart is secure by default
+    # https://github.com/prometheus-community/helm-charts/blob/main/charts/kube-state-metrics/values.yaml#L306-L323
+    enabled: true
+    rbac:
+      # Set to false to disable the creation of cluster scoped RBAC resources
+      # These will then have to be created manually by the user
+      create: true
+

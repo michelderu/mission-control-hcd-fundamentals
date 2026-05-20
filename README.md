@@ -9,6 +9,13 @@ Welcome to your Mission Control launchpad. This guide gets a local KinD cluster 
 - A practical flow from preflight checks to UI login.
 - Upgrade and cleanup commands when you want a fresh orbit.
 
+## Concept docs
+
+- [`concepts/README.md`](concepts/README.md): index of all concept documents.
+- [`concepts/software-components-wiring.md`](concepts/software-components-wiring.md): complete component inventory and YAML wiring based on actual values.
+- [`concepts/deployment-structure.md`](concepts/deployment-structure.md): Helm-first deployment and reconciliation flow with glossary and architecture map.
+- [`concepts/understanding-a-deployment-quickly.md`](concepts/understanding-a-deployment-quickly.md): fast triage checklist for understanding any specific deployment.
+
 ## What Mission Control is (and why you care)
 
 Mission Control is the management plane for DataStax-powered Cassandra/Kubernetes deployments. Think of it as the "mission dashboard + automation engine" for running data platforms: it provides a UI and APIs to deploy, observe, and operate clusters without hand-wiring every Kubernetes object yourself.
@@ -83,11 +90,10 @@ helm repo update
 ```
 
 ```bash
-cmver='v1.16.1'
 helm install cert-manager jetstack/cert-manager \
   --namespace cert-manager \
   --create-namespace \
-  --version "${cmver}" \
+  --version "v1.16.1" \
   --set crds.enabled=true \
   --set 'extraArgs[0]=--enable-certificate-owner-ref=true'
 ```
@@ -117,6 +123,30 @@ In short: these labels create predictable placement groups (`platform` vs `datab
 ```bash
 ./label-nodes.sh
 kubectl get nodes --show-labels
+```
+
+To get a clear overview of the topology, run:
+```bash
+kubectl get nodes -L mission-control.datastax.com/role,topology.kubernetes.io/zone,node-role.kubernetes.io/worker
+```
+
+**Intended node layout** (after `label-nodes.sh`):
+
+```mermaid
+flowchart LR
+  subgraph platform["Platform — mission-control.datastax.com/role=platform"]
+    w1["mc-worker"]
+    w2["mc-worker2"]
+  end
+
+  subgraph database["Database — mission-control.datastax.com/role=database"]
+    w3["mc-worker3<br/>zoneA"]
+    w4["mc-worker4<br/>zoneB"]
+    w5["mc-worker5<br/>zoneC"]
+  end
+
+  w1 --- w2
+  w3 --- w4 --- w5
 ```
 
 ---
@@ -238,6 +268,62 @@ kubectl get svc -n mission-control
 kubectl get pods -n mission-control
 kubectl get pvc -n mission-control
 ```
+
+To find out which pods run on which node in the topology, run:
+```bash
+kubectl get pods -n mission-control -o wide
+```
+
+For a sorted list by node:
+```bash
+kubectl get pods -n mission-control \
+  -o custom-columns='NODE:.spec.nodeName,NAME:.metadata.name,STATUS:.status.phase' \
+  --sort-by=.spec.nodeName
+```
+
+**Example runtime topology** (pods in `mission-control` after a successful install; placement may vary slightly by chart version):
+
+```mermaid
+flowchart TB
+  subgraph w1["mc-worker · role=platform"]
+    direction TB
+    w1_ops["operator · k8ssandra-operator"]
+    w1_ui["dex · loki-gateway · loki-write-0"]
+    w1_data["minio · mimir-distributor"]
+  end
+
+  subgraph w2["mc-worker2 · role=platform"]
+    direction TB
+    w2_ops["cass-operator · ui · replicated"]
+    w2_obs["aggregator-0 · kube-state-metrics · overrides-exporter"]
+    w2_loki["loki-read · loki-backend-0"]
+  end
+
+  subgraph w3["mc-worker3 · role=database · zoneA"]
+    direction TB
+    w3_mimir["mimir-alertmanager-0 · compactor-0 · ingester-1"]
+    w3_q["mimir-query-frontend · mimir-query-scheduler"]
+  end
+
+  subgraph w4["mc-worker4 · role=database · zoneB"]
+    direction TB
+    w4_mimir["mimir-gateway · ingester-0 · querier · ruler"]
+  end
+
+  subgraph w5["mc-worker5 · role=database · zoneC"]
+    direction TB
+    w5_mimir["mimir-ingester-2 · store-gateway-0 · querier · query-scheduler"]
+    w5_jobs["crd-patcher · make-minio-buckets · Succeeded"]
+  end
+```
+
+| Node | Role | Zone | Example pods |
+|------|------|------|----------------|
+| `mc-worker` | platform | — | `mission-control-operator`, `mission-control-k8ssandra-operator`, `mission-control-dex-*`, `loki-write-0`, `mission-control-minio-*`, `mission-control-mimir-distributor-*`, `mission-control-loki-gateway-*` |
+| `mc-worker2` | platform | — | `mission-control-ui-*`, `mission-control-cass-operator-*`, `mission-control-aggregator-0`, `loki-read-*`, `loki-backend-0`, `replicated-*`, `mission-control-kube-state-metrics-*` |
+| `mc-worker3` | database | zoneA | `mission-control-mimir-alertmanager-0`, `mission-control-mimir-compactor-0`, `mission-control-mimir-ingester-1`, `mission-control-mimir-query-frontend-*`, `mission-control-mimir-query-scheduler-*` |
+| `mc-worker4` | database | zoneB | `mission-control-mimir-gateway-*`, `mission-control-mimir-ingester-0`, `mission-control-mimir-querier-*`, `mission-control-mimir-ruler-*` |
+| `mc-worker5` | database | zoneC | `mission-control-mimir-ingester-2`, `mission-control-mimir-store-gateway-0`, `mission-control-mimir-querier-*`, `mission-control-mimir-query-scheduler-*`, `mission-control-crd-patcher-*`, `mission-control-mimir-make-minio-buckets-*` |
 
 ---
 
