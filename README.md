@@ -281,53 +281,7 @@ kubectl get pods -n mission-control \
   --sort-by=.spec.nodeName
 ```
 
-**Example runtime topology** (pods in `mission-control` after a successful install; placement may vary slightly by chart version). Each KinD worker shows **node metadata** (name, `mission-control.datastax.com/role`, `topology.kubernetes.io/zone`) above the **pods** scheduled on that node:
-
-```mermaid
-flowchart TB
-  subgraph mc["mission-control namespace — pod placement"]
-    direction TB
-
-    subgraph platform["Platform role"]
-      direction TB
-      w1_meta["Node: mc-worker<br/>Role: platform<br/>Zone: —"]
-      w1_pods["Pods<br/>operator · k8ssandra-operator · dex<br/>loki-gateway · loki-write-0 · minio · mimir-distributor"]
-      w1_meta --> w1_pods
-      w2_meta["Node: mc-worker2<br/>Role: platform<br/>Zone: —"]
-      w2_pods["Pods<br/>cass-operator · ui · replicated · aggregator-0<br/>kube-state-metrics · overrides-exporter · loki-read · loki-backend"]
-      w2_meta --> w2_pods
-      w1_pods ~~~ w2_meta
-    end
-
-    subgraph database["Database role"]
-      direction TB
-      w3_meta["Node: mc-worker3<br/>Role: database<br/>Zone: zoneA"]
-      w3_pods["Pods<br/>mimir-alertmanager-0 · compactor-0 · ingester-1<br/>query-frontend · query-scheduler"]
-      w3_meta --> w3_pods
-      w4_meta["Node: mc-worker4<br/>Role: database<br/>Zone: zoneB"]
-      w4_pods["Pods<br/>mimir-gateway · ingester-0 · querier · ruler"]
-      w4_meta --> w4_pods
-      w5_meta["Node: mc-worker5<br/>Role: database<br/>Zone: zoneC"]
-      w5_pods["Pods<br/>mimir-ingester-2 · store-gateway-0 · querier · query-scheduler<br/>crd-patcher · make-minio-buckets"]
-      w5_meta --> w5_pods
-      w3_pods ~~~ w4_meta
-      w4_pods ~~~ w5_meta
-    end
-
-    w2_pods ~~~ w3_meta
-  end
-
-  classDef nodeMeta fill:#fafafa,stroke:#616161,stroke-width:1px,color:#212121
-  classDef platformPods fill:#e3f2fd,stroke:#1565c0,stroke-width:2px,color:#0d47a1
-  classDef databasePods fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px,color:#1b5e20
-
-  class w1_meta,w2_meta,w3_meta,w4_meta,w5_meta nodeMeta
-  class w1_pods,w2_pods platformPods
-  class w3_pods,w4_pods,w5_pods databasePods
-
-  style platform fill:#f5f9ff,stroke:#1565c0,stroke-width:2px
-  style database fill:#f1f8e9,stroke:#2e7d32,stroke-width:2px
-```
+**Example runtime topology** (pods in `mission-control` after a successful install; placement may vary slightly by chart version):
 
 | Node | Role | Zone | Example pods |
 |------|------|------|----------------|
@@ -370,42 +324,98 @@ helm upgrade mission-control oci://registry.replicated.com/mission-control/stabl
 
 ---
 
-## 💤 Pause / Resume the lab with Docker
+## 💤 Pause, resume, and cleanup options
 
-If you want to temporarily stop resource usage without deleting the cluster, you can pause the KinD node containers:
+Use the option that matches how long you are away and what you want to keep.
+
+| Option | What it keeps | What it stops | Best for |
+|--------|----------------|---------------|----------|
+| **A — Docker pause** | KinD cluster, Mission Control install, PVCs, node labels | CPU on `mc-*` containers (host RAM mostly retained) | Same-day break (hours), quick freeze |
+| **B — Docker stop** | Cluster data on disk inside node containers | CPU and host RAM used by `mc-*` containers | Overnight break, need memory back without full reinstall |
+| **C — Helm uninstall** | KinD cluster, cert-manager, node labels | Mission Control release and `mission-control` namespace | Reinstall MC with new values on same cluster |
+| **D — KinD delete cluster** | Nothing in-cluster | Whole `mc` cluster and all namespaces | Multi-day break, flaky cluster, fresh lab |
+
+### Option A: Docker pause / resume (KinD nodes)
+
+**What it does:** Freezes the `mc-control-plane` and `mc-worker*` containers at the Docker level. Kubernetes state (etcd, PVCs, Helm release) stays on disk inside those containers.
+
+**Pros:** Fast; no reinstall when you come back.
+
+**Cons:** `kubectl`, port-forwards, and the UI do not work while paused. After long pauses, resume can be flaky (stale leases, pods not ready). **Does not free host RAM** — processes stay in memory, only frozen.
 
 ```bash
-docker pause $(docker ps -q --filter "name=mc-")
+ids=$(docker ps -q --filter "name=mc-")
+[ -n "$ids" ] && docker pause $ids
 ```
 
-Resume them later:
+Resume:
 
 ```bash
-docker unpause $(docker ps -q --filter "name=mc-")
+ids=$(docker ps -q --filter "name=mc-")
+[ -n "$ids" ] && docker unpause $ids
 ```
 
-> [!NOTE]
-> This pauses container processes at the Docker level. It is useful for short local breaks, but not ideal for long-term suspend workflows.
+Then verify: `kubectl get nodes` and `kubectl get pods -n mission-control`.
 
----
+### Option B: Docker stop / start (KinD nodes)
 
-## 🔟 Uninstall / reset
+**What it does:** Stops the `mc-*` KinD node containers (processes exit). Container filesystems and cluster state remain on disk; you start the same containers later — no `kind create` required.
 
-Uninstall Mission Control:
+**Pros:** Frees **host CPU and RAM** while stopped. Keeps the lab install (Helm release, PVCs, labels) if resume succeeds.
+
+**Cons:** `kubectl` and the UI are down while stopped. Resume takes longer than pause (nodes and pods must come back). Occasional instability after stop/start; if the cluster does not recover, use **Option D**.
+
+Stop:
+
+```bash
+ids=$(docker ps -q --filter "name=mc-")
+[ -n "$ids" ] && docker stop $ids
+```
+
+Start (includes already-stopped containers):
+
+```bash
+ids=$(docker ps -aq --filter "name=mc-")
+[ -n "$ids" ] && docker start $ids
+```
+
+Then wait and verify (can take several minutes):
+
+```bash
+kubectl config use-context kind-mc
+kubectl get nodes
+kubectl get pods -n mission-control
+```
+
+> [!WARNING]
+> Use `docker stop` / `docker start` only. Do **not** `docker rm` the `mc-*` containers — that removes nodes and breaks the cluster.
+
+### Option C: Remove Mission Control, keep KinD
+
+**What it does:** Removes the Helm release and the `mission-control` namespace (pods, PVCs, secrets for MC/Loki/Mimir/MinIO in that namespace). The KinD cluster `mc`, cert-manager, and node labels from `label-nodes.sh` remain.
+
+**Pros:** Reinstall Mission Control quickly with changed `mc-overrides.yaml` without recreating KinD.
+
+**Cons:** Does **not** remove HCD/Cassandra clusters you created in **other** namespaces via the UI — delete those separately. `cert-manager` in namespace `cert-manager` is left installed on purpose.
 
 ```bash
 helm uninstall mission-control -n mission-control
 kubectl delete namespace mission-control
 ```
 
-> [!NOTE]
-> `helm uninstall` removes the Mission Control control plane release. It does not automatically remove data clusters you created with Mission Control unless you delete/decommission those resources separately.
+Reinstall from section 7 (and section 3 labels only if you deleted the cluster).
 
-Delete KinD cluster:
+### Option D: Delete the KinD cluster (full reset)
+
+**What it does:** Destroys the entire `mc` cluster: control plane, workers, Mission Control, cert-manager workloads, any HCD clusters, and PVCs inside that cluster.
+
+**Pros:** Clean slate; best after long breaks or when pause/stop resume misbehaves. You do not need Option C first.
+
+**Cons:** Full runbook from section 1 onward (`kind create`, `label-nodes.sh`, cert-manager, Helm install).
 
 ```bash
 kind delete cluster --name mc
 ```
 
 > [!NOTE]
-> `kind delete cluster --name mc` removes the entire KinD cluster and all Kubernetes resources inside it (including Mission Control, created clusters, and in-cluster data/PVC state for that cluster).
+> Registry login (section 6) may be required again before the next `helm install`.
