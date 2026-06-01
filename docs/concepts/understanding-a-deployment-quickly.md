@@ -7,8 +7,8 @@ Use this checklist when you inherit or debug a Mission Control + HCD deployment 
 Start with desired state inputs:
 
 1. Helm values:
-   - `mc-overrides.yaml` (environment-specific overrides)
-   - `mc-values.yaml` (base values, if pinned)
+   - `charts/mission-control/overrides.yaml` (environment-specific overrides)
+   - `charts/mission-control/values.yaml` (base values, if pinned)
 2. Runtime custom resources:
    - `MissionControlCluster` CR(s)
    - HCD/Cassandra CRs (for actual data-plane topology)
@@ -28,7 +28,7 @@ helm list -A
 helm get values -n mission-control mission-control -a
 
 # If you keep files in repo
-rg "enabled:|minio|loki|mimir|dex|aggregator|agent|ingress" mc-values.yaml mc-overrides.yaml
+rg "enabled:|minio|loki|mimir|dex|aggregator|agent|ingress" charts/mission-control/values.yaml charts/mission-control/overrides.yaml
 
 # MissionControl CRs and HCD/Cassandra CRs
 kubectl get missioncontrolclusters -A

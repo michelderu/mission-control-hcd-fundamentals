@@ -47,7 +47,7 @@ Common component groups:
 
 You usually have two YAML layers:
 
-1. **Helm values** (`mc-values.yaml` + `mc-overrides.yaml`)
+1. **Helm values** (`charts/mission-control/values.yaml` + `charts/mission-control/overrides.yaml`)
 2. **MissionControlCluster CR** (either installed by chart or applied separately)
 
 Flow:
@@ -98,7 +98,7 @@ Flow:
 
 ```mermaid
 flowchart TD
-  A[mc-values.yaml + mc-overrides.yaml] --> B[helm install or upgrade]
+  A[charts/mission-control values + overrides] --> B[helm install or upgrade]
   B --> C[Rendered manifests]
   C --> D[MissionControlCluster CR + Operator]
   D --> E[ConfigMaps]
@@ -127,8 +127,8 @@ flowchart TD
 
 When you inspect a new setup, trace in this order:
 
-1. `mc-overrides.yaml` for environment-specific toggles.
-2. `mc-values.yaml` (or chart defaults) for base behavior.
+1. `charts/mission-control/overrides.yaml` for environment-specific toggles.
+2. `charts/mission-control/values.yaml` (or chart defaults) for base behavior.
 3. `MissionControlCluster` CR spec for desired state at runtime.
 4. Generated ConfigMaps/Secrets for effective component config.
 5. Resulting Deployments/StatefulSets/Pods/Services for actual runtime state.

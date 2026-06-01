@@ -1,0 +1,16 @@
+# Optional overlay: deploy Grafana dashboards (Mimir + Loki datasources provisioned by the chart).
+# Apply on install or upgrade together with values.yaml and overrides.yaml:
+#
+#   helm upgrade mission-control "$MC_CHART" \
+#     -f charts/mission-control/values.yaml \
+#     -f charts/mission-control/overrides.yaml \
+#     -f charts/mission-control/enable-grafana.yaml \
+#     --namespace mission-control \
+#     ${MC_CHART_VERSION:+--version "$MC_CHART_VERSION"}
+#
+# Pinned values.yaml keeps grafana.enabled: false; this file turns Grafana on for the lab.
+
+grafana:
+  enabled: true
+  nodeSelector:
+    mission-control.datastax.com/role: platform

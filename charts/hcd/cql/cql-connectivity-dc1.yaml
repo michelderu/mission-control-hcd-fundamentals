@@ -1,0 +1,11 @@
+apiVersion: missioncontrol.datastax.com/v1alpha1
+kind: CqlConnectivity
+metadata:
+  name: lab-cql-dc1
+  namespace: hcd
+spec:
+  cassandraDatacenterRef:
+    name: hcd-dc1
+  loadBalancers:
+    size: 1
+    nativePort: 9042

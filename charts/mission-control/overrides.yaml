@@ -1,4 +1,4 @@
-# Local overrides for `helm install|upgrade ... -f mc-values.yaml -f mc-overrides.yaml`
+# Local overrides for `helm install|upgrade ... -f charts/mission-control/values.yaml -f charts/mission-control/overrides.yaml`
 #
 # Assumes Helm release name `mission-control` in namespace `mission-control`.
 # If you use another release name, replace `mission-control-minio` in secretKeyRef
@@ -7,7 +7,23 @@
 # Helm replaces whole YAML lists on merge: never specify only part of `schemaConfig.configs` or
 # `loki.*.extraArgs` here without the full entries you need (see loki schema + extraArgs below).
 
+# Pin platform workloads to KinD nodes labeled mission-control.datastax.com/role=platform.
+allowOperatorsOnDatabaseNodes: false
+
+nodeSelector:
+  mission-control.datastax.com/role: platform
+
+ui:
+  nodeSelector:
+    mission-control.datastax.com/role: platform
+
+client:
+  nodeSelector:
+    mission-control.datastax.com/role: platform
+
 dex:
+  nodeSelector:
+    mission-control.datastax.com/role: platform
   config:
     enablePasswordDB: true
     staticPasswords:
@@ -15,8 +31,29 @@ dex:
         hash: "$2y$10$u/B82hcN/2fY1Wtz4YEW9.QblqcAfSWRsvbefvQVlFq8AAuMY7VU2"
         username: admin
 
+aggregator:
+  nodeSelector:
+    mission-control.datastax.com/role: platform
+
+k8ssandra-operator:
+  nodeSelector:
+    mission-control.datastax.com/role: platform
+  cass-operator:
+    nodeSelector:
+      mission-control.datastax.com/role: platform
+
+replicated:
+  nodeSelector:
+    mission-control.datastax.com/role: platform
+
+kube-state-metrics:
+  nodeSelector:
+    mission-control.datastax.com/role: platform
+
 mimir:
   minio:
+    nodeSelector:
+      mission-control.datastax.com/role: platform
     enabled: true
     buckets:
       - name: mimir-tsdb
@@ -34,8 +71,56 @@ mimir:
       - name: loki-admin
         policy: none
         purge: false
+  distributor:
+    nodeSelector:
+      mission-control.datastax.com/role: platform
+  ingester:
+    nodeSelector:
+      mission-control.datastax.com/role: platform
+  querier:
+    nodeSelector:
+      mission-control.datastax.com/role: platform
+  query_frontend:
+    nodeSelector:
+      mission-control.datastax.com/role: platform
+  query_scheduler:
+    nodeSelector:
+      mission-control.datastax.com/role: platform
+  compactor:
+    nodeSelector:
+      mission-control.datastax.com/role: platform
+  store_gateway:
+    nodeSelector:
+      mission-control.datastax.com/role: platform
+  alertmanager:
+    nodeSelector:
+      mission-control.datastax.com/role: platform
+  gateway:
+    nodeSelector:
+      mission-control.datastax.com/role: platform
+  ruler:
+    nodeSelector:
+      mission-control.datastax.com/role: platform
+  nginx:
+    nodeSelector:
+      mission-control.datastax.com/role: platform
+  rollout_operator:
+    nodeSelector:
+      mission-control.datastax.com/role: platform
 
 loki:
+  gateway:
+    nodeSelector:
+      mission-control.datastax.com/role: platform
+  read:
+    nodeSelector:
+      mission-control.datastax.com/role: platform
+  write:
+    nodeSelector:
+      mission-control.datastax.com/role: platform
+  backend:
+    nodeSelector:
+      mission-control.datastax.com/role: platform
   loki:
     storage:
       type: s3

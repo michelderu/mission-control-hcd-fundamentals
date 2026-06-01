@@ -1,0 +1,12 @@
+apiVersion: missioncontrol.datastax.com/v1alpha1
+kind: DataApi
+metadata:
+  name: lab-data-api-dc1
+  namespace: hcd
+spec:
+  cassandraDatacenterRef:
+    name: hcd-dc1
+  replicas: 1
+  services:
+    clusterIP:
+      port: 30080

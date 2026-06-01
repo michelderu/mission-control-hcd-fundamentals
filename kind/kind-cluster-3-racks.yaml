@@ -1,0 +1,20 @@
+# Mission Control + 1 HCD node (single rack, single datacenter).
+# role: kubelet at join. region/zone: scripts/apply-topology-labels.sh after create.
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+nodes:
+- role: control-plane
+- role: worker
+  kubeadmConfigPatches:
+  - |
+    kind: JoinConfiguration
+    nodeRegistration:
+      kubeletExtraArgs:
+        node-labels: "mission-control.datastax.com/role=platform"
+- role: worker
+  kubeadmConfigPatches:
+  - |
+    kind: JoinConfiguration
+    nodeRegistration:
+      kubeletExtraArgs:
+        node-labels: "mission-control.datastax.com/role=database"

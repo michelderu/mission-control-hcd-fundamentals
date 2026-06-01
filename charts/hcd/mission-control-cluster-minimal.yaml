@@ -1,0 +1,51 @@
+apiVersion: missioncontrol.datastax.com/v1beta2
+kind: MissionControlCluster
+metadata:
+  name: hcd
+  namespace: hcd
+spec:
+  createIssuer: true
+  dataApi: {}
+  encryption:
+    internodeEncryption:
+      certs:
+        createCerts: true
+      enabled: true
+  k8ssandra:
+    auth: true
+    cassandra:
+      config:
+        jvmOptions:
+          gc: G1GC
+          # Lab tuning: 1 pod × ~1.25Gi request on the database worker.
+          heapSize: 512Mi
+      serverType: hcd
+      serverVersion: "1.2.5"
+      superuserSecretRef:
+        name: hcd-superuser
+      storageConfig:
+        cassandraDataVolumeClaimSpec:
+          storageClassName: standard
+          accessModes:
+            - ReadWriteOnce
+          resources:
+            requests:
+              storage: 2Gi
+      resources:
+        requests:
+          cpu: 500m
+          memory: 1280Mi
+        limits:
+          cpu: "2"
+          memory: 1536Mi
+      datacenters:
+        - metadata:
+            name: hcd-dc1
+          datacenterName: dc1
+          size: 1
+          racks:
+            - name: rack1
+              nodeAffinityLabels:
+                mission-control.datastax.com/role: database
+                topology.kubernetes.io/region: dc1
+                topology.kubernetes.io/zone: rack1
