@@ -2,9 +2,13 @@
 
 Expose a **Data API** gateway for **`hcd-dc1`** ([DataStax docs](https://docs.datastax.com/en/mission-control/databases/get-started-data-api.html)).
 
-**Prerequisites:** Run from the **repository root**. Steps 1–4 complete (HCD **Ready**; [CQL](../04-cql/README.md) optional but confirms connectivity). Works with any **`PROFILE`** — the lab manifest always targets **`hcd-dc1`**. For **`hcd-dc2`** on the `2-dcs` profile, add another gateway via the UI or a second `DataApi` CR.
+**Prerequisites**
 
-**Next:** [Monitoring](../06-monitoring/README.md)
+- 📂 Run from the **repository root**.
+- Steps 1–4 complete (HCD **Ready**; [CQL](../04-cql/README.md) optional but confirms connectivity).
+- Any **`PROFILE`** — the lab manifest targets **`hcd-dc1`**. For **`hcd-dc2`** on `2-dcs`, add another gateway via the UI or a second `DataApi` CR.
+
+➡️ **Next:** [Monitoring (step 6)](../06-monitoring/README.md)
 
 ## What you deploy
 
@@ -18,7 +22,7 @@ ClusterIP Service: **`lab-data-api-dc1-data-api-cip`** on port **30080**
 
 ## Enable gateway
 
-### Mission Control UI
+### 🖥️ Mission Control UI
 
 ```bash
 kubectl port-forward svc/mission-control-ui -n mission-control 8080:8080
@@ -28,7 +32,7 @@ kubectl port-forward svc/mission-control-ui -n mission-control 8080:8080
 2. **Home** → project **`hcd`** → cluster **`hcd`** → **Connect** → **APIs**.
 3. **Add Gateway** → datacenter **`hcd-dc1`**, service type **clusterIP**, port **30080**, **1** replica.
 
-### CLI
+### ⌨️ CLI
 
 ```bash
 kubectl apply -f charts/hcd/data-api/data-api-dc1.yaml
@@ -72,19 +76,21 @@ curl -sS -L -X POST "http://127.0.0.1:30080/v1" \
   -d '{"findKeyspaces": {}}'
 ```
 
-A JSON response listing keyspaces (possibly empty) confirms the gateway and credentials work. See [List keyspaces](https://docs.datastax.com/en/hyper-converged-database/1.2/api-reference/admin-methods/list-keyspaces.html).
+A JSON response listing keyspaces (possibly empty) confirms the gateway works. See [List keyspaces](https://docs.datastax.com/en/hyper-converged-database/1.2/api-reference/admin-methods/list-keyspaces.html).
 
 ## Remove
 
-### CLI
+### ⌨️ CLI
 
 ```bash
 kubectl delete -f charts/hcd/data-api/data-api-dc1.yaml
 ```
 
-You can also delete the gateway from **Connect** → **APIs** in the Mission Control UI.
+### 🖥️ Mission Control UI
 
-## Troubleshooting
+Delete the gateway from **Connect** → **APIs**.
+
+## 🔧 Troubleshooting
 
 | Symptom | Check |
 |---------|--------|

@@ -1,14 +1,14 @@
 # Setting up Kubernetes (KinD)
 
-This guide creates the local **KinD** cluster `mc`, applies topology labels for HCD scheduling, and verifies nodes before you install Mission Control.
+Create the local **KinD** cluster `mc`, apply topology labels for HCD scheduling, and verify nodes before Mission Control.
 
-**Next:** [Mission Control install (step 2)](../02-mission-control/README.md) — MC install is identical for all topologies.
+**Prerequisites**
 
-## Prerequisites
+- 📂 Run all commands from the **repository root** (`kind/`, `scripts/` paths are relative to it).
+- Docker, KinD, `kubectl`, and Helm on the host.
+- Cluster name **`mc`** (kubectl context `kind-mc`).
 
-- **Repository root:** run all commands from the root of this git clone (`kind/`, `scripts/` paths are relative to it).
-- Docker, KinD, `kubectl`, and Helm are installed on the host.
-- Cluster name is **`mc`** (kubectl context `kind-mc`).
+➡️ **Next:** [Mission Control install (step 2)](../02-mission-control/README.md) — MC install is the same for every topology.
 
 ## Preflight
 
@@ -18,9 +18,9 @@ This guide creates the local **KinD** cluster `mc`, applies topology labels for 
 
 Checks CLI tools and Docker.
 
-## Topology profiles {#topology-profiles}
+## Topology profiles
 
-Pick **`minimal`**, **`3-racks`**, or **`2-dcs`** once — you will reuse the same value as `PROFILE` in [HCD install](../03-hcd/README.md).
+Pick **`minimal`**, **`3-racks`**, or **`2-dcs`** once — reuse the same value as **`PROFILE`** in [HCD install (step 3)](../03-hcd/README.md).
 
 Default: **`minimal`**. Use **`3-racks`** or **`2-dcs`** when you need more racks or datacenters.
 
@@ -38,26 +38,7 @@ Default: **`minimal`**. Use **`3-racks`** or **`2-dcs`** when you need more rack
 
 See also [`kind/README.md`](../../kind/README.md) for config file names.
 
-```mermaid
-flowchart TB
-  subgraph minimal["minimal — 1 HCD"]
-    mcp[platform ×1]
-    mcd1["database dc1/rack1 ×1"]
-    mcp --- mcd1
-  end
-  subgraph racks["3-racks — 3 HCD"]
-    rcp[platform ×2]
-    rd1[dc1 rack1]
-    rd2[dc1 rack2]
-    rd3[dc1 rack3]
-    rcp --- rd1 --- rd2 --- rd3
-  end
-  subgraph twodc["2-dcs — 6 HCD"]
-    dcp[platform ×2]
-  end
-```
-
-> **Resource use:** **minimal** = 3 KinD nodes. **3-racks** = 6 nodes. **2-dcs** = 9 nodes and the most RAM. All `charts/hcd/*.yaml` use the same lab sizing per Cassandra pod (`512Mi` heap, `1280Mi` memory request, `2Gi` PVC).
+> 📦 **Resources:** **minimal** = 3 KinD nodes · **3-racks** = 6 · **2-dcs** = 9 (most RAM). All `charts/hcd/*.yaml` use the same lab sizing per Cassandra pod (`512Mi` heap, `1280Mi` memory request, `2Gi` PVC).
 
 ## Create the cluster
 
@@ -83,12 +64,13 @@ kubectl cluster-info
 kubectl get nodes
 ```
 
-Confirm topology labels on the nodes:
+Confirm topology labels:
+
 ```bash
 kubectl get nodes -L mission-control.datastax.com/role,topology.kubernetes.io/region,topology.kubernetes.io/zone
 ```
 
-For the `2-dcs` topology your workers would look as follows:
+Example output for **`2-dcs`**:
 
 ```text
 NAME               STATUS   ROLES           AGE    VERSION   ROLE       REGION   ZONE
@@ -103,7 +85,7 @@ mc-worker7         Ready    <none>          160m   v1.35.0   database   dc2     
 mc-worker8         Ready    <none>          160m   v1.35.0   database   dc2      rack3
 ```
 
-> **ROLES vs ROLE:** **ROLES** is the Kubernetes node role; **ROLE** is `mission-control.datastax.com/role`.
+> 💡 **ROLES vs ROLE:** **ROLES** is the Kubernetes node role; **ROLE** is `mission-control.datastax.com/role`.
 
 ## Pause, stop, or delete the cluster
 
@@ -140,4 +122,4 @@ kubectl get nodes
 kind delete cluster --name mc
 ```
 
-After delete, redo this guide from **Create the cluster** (same or new `PROFILE`), then [Mission Control install](../02-mission-control/README.md).
+After delete, redo **Create the cluster** (same or new `PROFILE`), then ➡️ [Mission Control install (step 2)](../02-mission-control/README.md).

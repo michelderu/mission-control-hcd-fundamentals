@@ -1,10 +1,13 @@
 # Installing, updating, and upgrading Mission Control
 
-Install Mission Control on the KinD cluster from [Kubernetes setup](../01-kubernetes/README.md) using **embedded MinIO**, pinned Helm values, and platform `nodeSelector`s.
+Install Mission Control on the KinD cluster from [Kubernetes setup (step 1)](../01-kubernetes/README.md) using **embedded MinIO**, pinned Helm values, and platform `nodeSelector`s.
 
-**Prerequisites:** Run from the **repository root**. KinD cluster `mc` is running ([Kubernetes setup](../01-kubernetes/README.md)).
+**Prerequisites**
 
-**Next:** [HCD install (step 3)](../03-hcd/README.md) — use the same `PROFILE` as KinD.
+- 📂 Run from the **repository root**.
+- KinD cluster **`mc`** is running ([Kubernetes setup](../01-kubernetes/README.md)).
+
+➡️ **Next:** [HCD install (step 3)](../03-hcd/README.md) — use the same **`PROFILE`** as KinD.
 
 ## What you install
 
@@ -29,7 +32,7 @@ Keep environment-specific settings in `charts/mission-control/overrides.yaml` on
 
 **Alternative:** [DataStax sample values](https://docs.datastax.com/en/mission-control/install/_attachments/sample-values.yaml) + [install docs](https://docs.datastax.com/en/mission-control/install/install-mc-helm.html) (GCS-backed observability; this lab uses MinIO).
 
-> **MinIO:** Loki uses `<release>-minio.<namespace>.svc.cluster.local:9000` and Secret `mission-control-minio` (`rootUser` / `rootPassword`). Do not trim `loki.loki.schemaConfig.configs` in overrides — Helm replaces whole lists.
+> ⚠️ **MinIO:** Loki uses `<release>-minio.<namespace>.svc.cluster.local:9000` and Secret `mission-control-minio` (`rootUser` / `rootPassword`). Do not trim `loki.loki.schemaConfig.configs` in overrides — Helm replaces whole lists.
 
 ## Registry login
 
@@ -135,7 +138,10 @@ mission-control-mimir-make-minio-buckets-5.4.0-nfls6        0/1     Completed   
 kubectl port-forward svc/mission-control-ui -n mission-control 8080:8080
 ```
 
-Open `https://localhost:8080` and log in with Dex credentials from overrides (`mission-control@example.com` / `cassandra` in the default lab overrides).
+1. Open `https://localhost:8080`.
+2. Log in with Dex credentials from overrides (`mission-control@example.com` / `cassandra` in the default lab).
+
+Use this port-forward in later steps (HCD, CQL, Data API, Observability) whenever a guide says **Mission Control login**.
 
 ## Upgrade Mission Control
 

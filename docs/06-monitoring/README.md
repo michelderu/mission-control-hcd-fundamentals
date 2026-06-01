@@ -1,26 +1,32 @@
 # Monitoring — Mission Control UI and Grafana
 
-View cluster health and metrics after steps 1–3 ([Kubernetes](../01-kubernetes/README.md), [Mission Control](../02-mission-control/README.md), [HCD](../03-hcd/README.md)). Optional: [CQL](../04-cql/README.md), [Data API](../05-data-api/README.md).
+View cluster health and metrics after steps 1–3. Optional: [CQL (step 4)](../04-cql/README.md), [Data API (step 5)](../05-data-api/README.md).
 
-**Prerequisites:** Run from the **repository root**. Mission Control in **`mission-control`**; HCD running in **`hcd`** (any **`PROFILE`**).
+**Prerequisites**
+
+- 📂 Run from the **repository root**.
+- Mission Control in **`mission-control`**; HCD running in **`hcd`** (any **`PROFILE`**).
 
 ## What is already running
 
 The default lab install (`values.yaml` + `overrides.yaml`) deploys **Mimir**, **Loki**, **Vector aggregator**, and **Alertmanager** with embedded **MinIO**.
 
-Grafana is **disabled** in pinned `values.yaml`. Enable it in section B when you want the Grafana UI.
+Grafana is **disabled** in pinned `values.yaml`. Enable it in [Grafana (optional)](#grafana-optional) when you want the Grafana UI.
 
-## A. Mission Control UI Observability
+## 🖥️ Mission Control UI — Observability
 
-Built-in observability in Mission Control — cluster health for any topology.
+Built-in observability — cluster health for any topology.
 
 ```bash
 kubectl port-forward svc/mission-control-ui -n mission-control 8080:8080
 ```
 
-Open `https://localhost:8080` → **Home** → project **`hcd`** → cluster **`hcd`** → **Observability**.
+1. Open `https://localhost:8080` ([Mission Control login](../02-mission-control/README.md#access-the-ui)).
+2. **Home** → project **`hcd`** → cluster **`hcd`** → **Observability**.
 
-## B. Enable Grafana (optional)
+## 📊 Grafana (optional)
+
+### ⌨️ CLI — enable
 
 ```bash
 export MC_CHART=oci://registry.replicated.com/mission-control/stable/mission-control
@@ -37,7 +43,7 @@ kubectl get pods -n mission-control | grep grafana
 kubectl get svc -n mission-control | grep grafana
 ```
 
-### Access Grafana
+### 🖥️ Access Grafana
 
 In one terminal (leave it running):
 
@@ -54,20 +60,21 @@ kubectl get secret mission-control-grafana -n mission-control -o jsonpath='{.dat
 
 Built-in Mission Control dashboards should appear under **Dashboards**. If charts are empty, check **Configuration** → **Data sources** (Mimir, Loki) and that observability pods are Ready in **`mission-control`**.
 
-## C. Quick pipeline checks
+## ⌨️ Pipeline checks
 
 ```bash
 kubectl get pods -n mission-control | grep -E 'mimir|loki|aggregator|grafana'
 kubectl logs -n mission-control deploy/mission-control-mimir-distributor --tail=30
 ```
 
-## Troubleshooting empty charts
+## 🔧 Troubleshooting
 
 | Symptom | Check |
 |---------|--------|
 | No project in UI | `kubectl label namespace hcd mission-control.datastax.com/is-project=true` |
 | Cluster missing | `kubectl get missioncontrolcluster -n hcd`; Cassandra pods Ready |
 | UI Observability empty | Mimir / Vector pods in `mission-control` |
+| Grafana charts empty | Data sources and observability pods Ready |
 
 ## Disable Grafana again
 

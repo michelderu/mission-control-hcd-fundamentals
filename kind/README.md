@@ -1,8 +1,10 @@
 # KinD cluster configs
 
-KinD YAML for this lab. **Full steps:** [`docs/01-kubernetes/README.md`](../docs/01-kubernetes/README.md).
+KinD YAML for this lab. Full walkthrough: [`docs/01-kubernetes/README.md`](../docs/01-kubernetes/README.md).
 
-**Repository root:** run commands from the clone root.
+**Prerequisites**
+
+- 📂 Run commands from the **repository root**.
 
 ```bash
 export PROFILE=minimal   # minimal | 3-racks | 2-dcs

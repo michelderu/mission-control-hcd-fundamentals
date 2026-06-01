@@ -2,13 +2,17 @@
 
 Deploy **Hyper-Converged Database (HCD)** with a `MissionControlCluster` custom resource.
 
-**Prerequisites:** Run from the **repository root**. [Kubernetes](../01-kubernetes/README.md) + [Mission Control](../02-mission-control/README.md) are running. Use the same **`PROFILE`** as KinD ([topology profiles](../01-kubernetes/README.md#topology-profiles): `minimal`, `3-racks`, or `2-dcs`).
+**Prerequisites**
 
-**Next:** [CQL](../04-cql/README.md) · optional: [Data API](../05-data-api/README.md) · [Monitoring](../06-monitoring/README.md)
+- 📂 Run from the **repository root**.
+- [Kubernetes (step 1)](../01-kubernetes/README.md) and [Mission Control (step 2)](../02-mission-control/README.md) are running.
+- Same **`PROFILE`** as KinD ([topology profiles](../01-kubernetes/README.md#topology-profiles): `minimal`, `3-racks`, or `2-dcs`).
+
+➡️ **Next:** [CQL (step 4)](../04-cql/README.md) · 💡 optional: [Data API](../05-data-api/README.md) · [Monitoring](../06-monitoring/README.md)
 
 ## Pick your manifest
 
-All profiles use namespace **`hcd`**. Manifest file name matches `PROFILE`:
+All profiles use namespace **`hcd`**. The manifest file name matches **`PROFILE`**:
 
 | `PROFILE` | Manifest | Datacenters | Cassandra pods |
 |-----------|----------|-------------|----------------|
@@ -18,23 +22,23 @@ All profiles use namespace **`hcd`**. Manifest file name matches `PROFILE`:
 
 Lab YAMLs use `serverVersion: "1.2.5"`, internode encryption, and **`racks[].nodeAffinityLabels`** aligned with `./scripts/apply-topology-labels.sh "${PROFILE}"`.
 
-**Lab resources (every profile):** `heapSize: 512Mi`, pod `memory` request `1280Mi` / limit `1536Mi`, PVC `2Gi` per node.
+> 📦 **Resources (every profile):** `heapSize: 512Mi`, pod `memory` request `1280Mi` / limit `1536Mi`, PVC `2Gi` per node.
 
 ## Install
 
-### Mission Control UI
+### 🖥️ Mission Control UI
 
 ```bash
 kubectl port-forward svc/mission-control-ui -n mission-control 8080:8080
 ```
 
 1. Open `https://localhost:8080` ([Mission Control login](../02-mission-control/README.md#access-the-ui)).
-2. Ensure project **`hcd`** exists (namespace labeled — see CLI below if you have not created it yet).
-3. **Create Cluster** (simple or expert mode) and match your KinD **`PROFILE`** topology, or skip this if you use the CLI manifest.
+2. Ensure project **`hcd`** exists (namespace labeled — see ⌨️ CLI below if needed).
+3. **Create Cluster** (simple or expert mode) and match your KinD **`PROFILE`**, or skip if you use the CLI manifest.
 
-### CLI
+### ⌨️ CLI
 
-This guide applies the checked-in manifests (recommended for reproducibility).
+Checked-in manifests (recommended for reproducibility):
 
 ```bash
 export PROFILE=minimal   # same value as KinD step 1
@@ -71,7 +75,7 @@ kubectl logs -n mission-control deploy/mission-control-operator --tail=50
 
 ## Update / upgrade HCD
 
-Edit the manifest, then re-apply with the same `PROFILE` you used at install:
+Edit the manifest, then re-apply with the same **`PROFILE`**:
 
 ```bash
 kubectl apply -f charts/hcd/mission-control-cluster-${PROFILE}.yaml

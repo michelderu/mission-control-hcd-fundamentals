@@ -9,9 +9,9 @@ Local lab for **Mission Control** on **KinD** with **embedded MinIO** and **HCD*
 | **1** | [**Setting up Kubernetes**](docs/01-kubernetes/README.md) | KinD cluster `mc`, topology labels, verify nodes |
 | **2** | [**Mission Control — install / upgrade**](docs/02-mission-control/README.md) | cert-manager, Helm install, UI, upgrades |
 | **3** | [**HCD — install / upgrade**](docs/03-hcd/README.md) | `kubectl apply` `mission-control-cluster-${PROFILE}.yaml` |
-| **4** | [**CQL (cqlsh)**](docs/04-cql/README.md) | Optional `CqlConnectivity` gateway; MC CQL console or CLI |
-| **5** | [**Data API**](docs/05-data-api/README.md) | Optional — HTTP gateway for `hcd-dc1` (any profile) |
-| **6** | [**Monitoring**](docs/06-monitoring/README.md) | MC UI Observability; optional Grafana (any profile) |
+| **4** | [**CQL (cqlsh)**](docs/04-cql/README.md) | Optional CQL gateway; MC console or CLI |
+| **5** | [**Data API**](docs/05-data-api/README.md) | Optional HTTP gateway for `hcd-dc1` |
+| **6** | [**Monitoring**](docs/06-monitoring/README.md) | MC Observability; optional Grafana |
 
 ## Repo layout
 
@@ -23,17 +23,23 @@ Local lab for **Mission Control** on **KinD** with **embedded MinIO** and **HCD*
 | [`docs/04-cql/`](docs/04-cql/README.md) | CQL console and `cqlsh` access |
 | [`docs/05-data-api/`](docs/05-data-api/README.md) | Data API gateways |
 | [`docs/06-monitoring/`](docs/06-monitoring/README.md) | MC UI metrics, Grafana overlay |
-| [`kind/`](kind/README.md) | KinD YAML configs (pointer to docs) |
+| [`kind/`](kind/README.md) | KinD YAML configs |
 | [`charts/mission-control/`](charts/mission-control/) | Pinned `values.yaml`, `overrides.yaml`, optional `enable-grafana.yaml` |
-| [`charts/hcd/`](charts/hcd/) | `MissionControlCluster` + optional `data-api/` gateways |
+| [`charts/hcd/`](charts/hcd/) | `MissionControlCluster` + optional `cql/` and `data-api/` |
 | [`scripts/`](scripts/) | `preflight-check.sh`, `apply-topology-labels.sh` |
 | [`docs/concepts/`](docs/concepts/README.md) | Architecture and wiring reference |
 
 ## Lab conventions
 
-**Repository root:** run every command from the root of this git clone (`charts/`, `kind/`, `scripts/` are relative to it). Runbooks list **Mission Control UI** steps before **CLI** when both are available.
+| Symbol | Meaning |
+|--------|---------|
+| 🖥️ | Mission Control UI (listed before ⌨️ CLI when both exist) |
+| ⌨️ | Shell commands from the repository root |
+| ⚠️ | KinD / lab limitation |
 
-**Choose one topology profile** and use the same name in steps 1–3. Set it once in your shell:
+**Repository root:** run every command from the root of this git clone (`charts/`, `kind/`, `scripts/` are relative to it).
+
+**Choose one topology profile** and use the same name in steps 1–3:
 
 ```bash
 export PROFILE=minimal   # minimal | 3-racks | 2-dcs
@@ -52,13 +58,13 @@ export PROFILE=minimal   # minimal | 3-racks | 2-dcs
 | **3-racks** | `kind/kind-cluster-3-racks.yaml` | `charts/hcd/mission-control-cluster-3-racks.yaml` | `hcd-dc1` | 3 |
 | **2-dcs** | `kind/kind-cluster-2-dcs.yaml` | `charts/hcd/mission-control-cluster-2-dcs.yaml` | `hcd-dc1`, `hcd-dc2` | 6 |
 
-Steps 4–6 work for every profile. Optional: `charts/hcd/cql/cql-connectivity-dc1.yaml` (CQL gateway) · `charts/hcd/data-api/data-api-dc1.yaml` (Data API) — both target **`hcd-dc1`**.
+Steps 4–6 work for every profile. Optional charts: `charts/hcd/cql/cql-connectivity-dc1.yaml` (CQL gateway) · `charts/hcd/data-api/data-api-dc1.yaml` (Data API) — both target **`hcd-dc1`**.
 
-To switch profiles, delete the KinD cluster or the **`hcd`** namespace before re-running with a different `PROFILE`.
+> ⚠️ **Switching profiles:** delete the KinD cluster or the **`hcd`** namespace before re-running with a different `PROFILE`.
 
 ## Assumptions
 
-- Docker, KinD, `kubectl`, Helm installed.
+- Docker, KinD, `kubectl`, and Helm installed.
 
 ## Concepts (reference)
 
