@@ -1,4 +1,4 @@
-# Local overrides for `helm install|upgrade ... -f charts/mission-control/values.yaml -f charts/mission-control/overrides.yaml`
+# Local overrides for `helm install|upgrade ... -f manifests/mission-control/values.yaml -f manifests/mission-control/overrides.yaml`
 #
 # Assumes Helm release name `mission-control` in namespace `mission-control`.
 # If you use another release name, replace `mission-control-minio` in secretKeyRef

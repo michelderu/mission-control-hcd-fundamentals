@@ -5,10 +5,10 @@ Deploy **Hyper-Converged Database (HCD)** with a `MissionControlCluster` custom 
 **Prerequisites**
 
 - 📂 Run from the **repository root**.
-- [Kubernetes (step 1)](../01-kubernetes/README.md) and [Mission Control (step 2)](../02-mission-control/README.md) are running.
-- Same **`PROFILE`** as KinD ([topology profiles](../01-kubernetes/README.md#topology-profiles): `minimal`, `3-racks`, or `2-dcs`).
+- [Kubernetes (step 1)](01-kubernetes.md) and [Mission Control (step 2)](02-mission-control.md) are running.
+- Same **`PROFILE`** as KinD ([topology profiles](01-kubernetes.md#topology-profiles): `minimal`, `3-racks`, or `2-dcs`).
 
-➡️ **Next:** [CQL (step 4)](../04-cql/README.md) · 💡 optional: [Data API](../05-data-api/README.md) · [Monitoring](../06-monitoring/README.md)
+➡️ **Next:** [CQL (step 4)](04-cql.md) · 💡 optional: [Data API](05-data-api.md) · [Monitoring](06-monitoring.md)
 
 ## Pick your manifest
 
@@ -16,9 +16,9 @@ All profiles use namespace **`hcd`**. The manifest file name matches **`PROFILE`
 
 | `PROFILE` | Manifest | Datacenters | Cassandra pods |
 |-----------|----------|-------------|----------------|
-| `minimal` | `charts/hcd/mission-control-cluster-minimal.yaml` | `hcd-dc1` | 1 |
-| `3-racks` | `charts/hcd/mission-control-cluster-3-racks.yaml` | `hcd-dc1` | 3 |
-| `2-dcs` | `charts/hcd/mission-control-cluster-2-dcs.yaml` | `hcd-dc1`, `hcd-dc2` | 6 |
+| `minimal` | `manifests/hcd/mission-control-cluster-minimal.yaml` | `hcd-dc1` | 1 |
+| `3-racks` | `manifests/hcd/mission-control-cluster-3-racks.yaml` | `hcd-dc1` | 3 |
+| `2-dcs` | `manifests/hcd/mission-control-cluster-2-dcs.yaml` | `hcd-dc1`, `hcd-dc2` | 6 |
 
 Lab YAMLs use `serverVersion: "1.2.5"`, internode encryption, and **`racks[].nodeAffinityLabels`** aligned with `./scripts/apply-topology-labels.sh "${PROFILE}"`.
 
@@ -32,7 +32,7 @@ Lab YAMLs use `serverVersion: "1.2.5"`, internode encryption, and **`racks[].nod
 kubectl port-forward svc/mission-control-ui -n mission-control 8080:8080
 ```
 
-1. Open `https://localhost:8080` ([Mission Control login](../02-mission-control/README.md#access-the-ui)).
+1. Open `https://localhost:8080` ([Mission Control login](02-mission-control.md#access-the-ui)).
 2. Ensure project **`hcd`** exists (namespace labeled — see ⌨️ CLI below if needed).
 3. **Create Cluster** (simple or expert mode) and match your KinD **`PROFILE`**, or skip if you use the CLI manifest.
 
@@ -48,7 +48,7 @@ kubectl create namespace hcd
 kubectl label namespace hcd mission-control.datastax.com/is-project=true
 kubectl annotate namespace hcd mission-control.datastax.com/project-name=hcd
 
-kubectl apply -f charts/hcd/mission-control-cluster-${PROFILE}.yaml
+kubectl apply -f manifests/hcd/mission-control-cluster-${PROFILE}.yaml
 ```
 
 ## Watch rollout
@@ -78,7 +78,7 @@ kubectl logs -n mission-control deploy/mission-control-operator --tail=50
 Edit the manifest, then re-apply with the same **`PROFILE`**:
 
 ```bash
-kubectl apply -f charts/hcd/mission-control-cluster-${PROFILE}.yaml
+kubectl apply -f manifests/hcd/mission-control-cluster-${PROFILE}.yaml
 ```
 
 For large topology changes, deleting and recreating the `MissionControlCluster` may be simpler.
@@ -90,4 +90,4 @@ kubectl delete missioncontrolcluster hcd -n hcd
 kubectl delete namespace hcd
 ```
 
-Or delete the whole KinD cluster ([Kubernetes guide](../01-kubernetes/README.md)).
+Or delete the whole KinD cluster ([Kubernetes guide](01-kubernetes.md)).

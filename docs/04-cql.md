@@ -8,7 +8,7 @@ Run **CQL** against HCD via an optional **CQL gateway** (`CqlConnectivity`), the
 - Steps 1–3 complete; Cassandra pods **Ready** in namespace **`hcd`**.
 - Any **`PROFILE`** (`minimal`, `3-racks`, `2-dcs`).
 
-➡️ **Next (optional):** [Data API (step 5)](../05-data-api/README.md) · [Monitoring (step 6)](../06-monitoring/README.md)
+➡️ **Next (optional):** [Data API (step 5)](05-data-api.md) · [Monitoring (step 6)](06-monitoring.md)
 
 ## How you can connect
 
@@ -32,7 +32,7 @@ Run **CQL** against HCD via an optional **CQL gateway** (`CqlConnectivity`), the
 
 ## Create a CQL gateway (optional)
 
-A **`CqlConnectivity`** resource deploys **cql-router** and exposes port **9042**. This is separate from **Connect** → **APIs** ([Data API](../05-data-api/README.md)).
+A **`CqlConnectivity`** resource deploys **cql-router** and exposes port **9042**. This is separate from **Connect** → **APIs** ([Data API](05-data-api.md)).
 
 ### 🖥️ Mission Control UI
 
@@ -40,7 +40,7 @@ A **`CqlConnectivity`** resource deploys **cql-router** and exposes port **9042*
 kubectl port-forward svc/mission-control-ui -n mission-control 8080:8080
 ```
 
-1. Open `https://localhost:8080` ([Mission Control login](../02-mission-control/README.md#access-the-ui)).
+1. Open `https://localhost:8080` ([Mission Control login](02-mission-control.md#access-the-ui)).
 2. **Home** → project **`hcd`** → cluster **`hcd`** → **Connect**.
 3. Open **CQL** (active CQL gateways).
 4. **Add Gateway** → datacenter **`hcd-dc1`**.
@@ -51,7 +51,7 @@ kubectl port-forward svc/mission-control-ui -n mission-control 8080:8080
 ### ⌨️ CLI
 
 ```bash
-kubectl apply -f charts/hcd/cql/cql-connectivity-dc1.yaml
+kubectl apply -f manifests/hcd/cql/cql-connectivity-dc1.yaml
 
 kubectl get cqlconnectivity -n hcd
 kubectl get pods,svc -n hcd | grep -E 'cql-router|cql-connectivity|lab-cql'
@@ -60,7 +60,7 @@ kubectl get pods,svc -n hcd | grep -E 'cql-router|cql-connectivity|lab-cql'
 When the LoadBalancer has an **EXTERNAL-IP**, connect with `cqlsh` or a driver on that address and port **9042** using `hcd-superuser` credentials.
 
 ```bash
-kubectl delete -f charts/hcd/cql/cql-connectivity-dc1.yaml
+kubectl delete -f manifests/hcd/cql/cql-connectivity-dc1.yaml
 ```
 
 You can also remove the gateway from **Connect** → **CQL** in the UI.
@@ -89,7 +89,7 @@ kubectl get secret hcd-superuser -n hcd -o jsonpath='{.data.password}' | base64 
 kubectl port-forward svc/mission-control-ui -n mission-control 8080:8080
 ```
 
-1. Open `https://localhost:8080` ([Mission Control login](../02-mission-control/README.md#access-the-ui)).
+1. Open `https://localhost:8080` ([Mission Control login](02-mission-control.md#access-the-ui)).
 2. **Home** → project **`hcd`** → cluster **`hcd`** → **CQL console** (not **Connect** → **CQL** gateways).
 3. Select a datacenter (`hcd-dc1`; on **`2-dcs`**, choose `hcd-dc2` for the second DC).
 4. Enter **username** and **password** from `hcd-superuser`.
@@ -150,7 +150,7 @@ If you created a **LoadBalancer** CQL gateway with an external IP, connect to th
 
 | Symptom | Check |
 |---------|--------|
-| No CQL console in UI | HCD cluster Ready; project **`hcd`** labeled ([HCD install](../03-hcd/README.md)) |
+| No CQL console in UI | HCD cluster Ready; project **`hcd`** labeled ([HCD install](03-hcd.md)) |
 | Auth failed | `hcd-superuser` exists: `kubectl get secret hcd-superuser -n hcd` |
 | No `cqlsh-pod` | `kubectl get pods -n hcd \| grep cqlsh` |
 | Wrong DC | Service name matches datacenter: `kubectl get svc -n hcd -l app=cassandra` |

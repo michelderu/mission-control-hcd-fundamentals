@@ -1,6 +1,6 @@
 # KinD cluster configs
 
-KinD YAML for this lab. Full walkthrough: [`docs/01-kubernetes/README.md`](../docs/01-kubernetes/README.md).
+KinD YAML for this lab. Full walkthrough: [`docs/01-kubernetes.md`](../docs/01-kubernetes.md).
 
 **Prerequisites**
 

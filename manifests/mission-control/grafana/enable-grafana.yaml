@@ -2,9 +2,9 @@
 # Apply on install or upgrade together with values.yaml and overrides.yaml:
 #
 #   helm upgrade mission-control "$MC_CHART" \
-#     -f charts/mission-control/values.yaml \
-#     -f charts/mission-control/overrides.yaml \
-#     -f charts/mission-control/enable-grafana.yaml \
+#     -f manifests/mission-control/values.yaml \
+#     -f manifests/mission-control/overrides.yaml \
+#     -f manifests/mission-control/enable-grafana.yaml \
 #     --namespace mission-control \
 #     ${MC_CHART_VERSION:+--version "$MC_CHART_VERSION"}
 #

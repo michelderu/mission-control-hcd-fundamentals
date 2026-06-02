@@ -1,0 +1,11 @@
+spec:
+  k8ssandra:
+    medusa:
+      storageProperties:
+        storageProvider: s3_compatible
+        bucketName: medusa-backups
+        storageSecretRef:
+          name: medusa-bucket-key
+        host: mission-control-minio.mission-control.svc.cluster.local
+        port: 9000
+        secure: false

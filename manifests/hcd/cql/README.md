@@ -10,4 +10,4 @@
 |------|------------|------|
 | `cql-connectivity-dc1.yaml` | `hcd-dc1` | `loadBalancers` (size 1) |
 
-➡️ **Runbook:** [`docs/04-cql/README.md`](../../../docs/04-cql/README.md)
+➡️ **Runbook:** [`docs/04-cql.md`](../../../docs/04-cql.md)

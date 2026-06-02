@@ -1,11 +1,13 @@
 # Monitoring — Mission Control UI and Grafana
 
-View cluster health and metrics after steps 1–3. Optional: [CQL (step 4)](../04-cql/README.md), [Data API (step 5)](../05-data-api/README.md).
+View cluster health and metrics after steps 1–3. Optional: [CQL (step 4)](04-cql.md), [Data API (step 5)](05-data-api.md).
 
 **Prerequisites**
 
 - 📂 Run from the **repository root**.
 - Mission Control in **`mission-control`**; HCD running in **`hcd`** (any **`PROFILE`**).
+
+➡️ **Next:** [Backup and restore (step 7)](07-backup-restore.md)
 
 ## What is already running
 
@@ -21,7 +23,7 @@ Built-in observability — cluster health for any topology.
 kubectl port-forward svc/mission-control-ui -n mission-control 8080:8080
 ```
 
-1. Open `https://localhost:8080` ([Mission Control login](../02-mission-control/README.md#access-the-ui)).
+1. Open `https://localhost:8080` ([Mission Control login](02-mission-control.md#access-the-ui)).
 2. **Home** → project **`hcd`** → cluster **`hcd`** → **Observability**.
 
 ## 📊 Grafana (optional)
@@ -33,9 +35,9 @@ export MC_CHART=oci://registry.replicated.com/mission-control/stable/mission-con
 export MC_CHART_VERSION=1.18.0
 
 helm upgrade mission-control "$MC_CHART" \
-  -f charts/mission-control/values.yaml \
-  -f charts/mission-control/overrides.yaml \
-  -f charts/mission-control/enable-grafana.yaml \
+  -f manifests/mission-control/values.yaml \
+  -f manifests/mission-control/overrides.yaml \
+  -f manifests/mission-control/grafana/enable-grafana.yaml \
   --namespace mission-control \
   --version "$MC_CHART_VERSION"
 
@@ -78,4 +80,4 @@ kubectl logs -n mission-control deploy/mission-control-mimir-distributor --tail=
 
 ## Disable Grafana again
 
-Omit `enable-grafana.yaml` on upgrade (see [`enable-grafana.yaml`](../../charts/mission-control/enable-grafana.yaml) comment).
+Omit `enable-grafana.yaml` on upgrade (see [`enable-grafana.yaml`](../manifests/mission-control/grafana/enable-grafana.yaml) comment).

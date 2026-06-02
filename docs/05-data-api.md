@@ -5,10 +5,10 @@ Expose a **Data API** gateway for **`hcd-dc1`** ([DataStax docs](https://docs.da
 **Prerequisites**
 
 - 📂 Run from the **repository root**.
-- Steps 1–4 complete (HCD **Ready**; [CQL](../04-cql/README.md) optional but confirms connectivity).
+- Steps 1–4 complete (HCD **Ready**; [CQL](04-cql.md) optional but confirms connectivity).
 - Any **`PROFILE`** — the lab manifest targets **`hcd-dc1`**. For **`hcd-dc2`** on `2-dcs`, add another gateway via the UI or a second `DataApi` CR.
 
-➡️ **Next:** [Monitoring (step 6)](../06-monitoring/README.md)
+➡️ **Next:** [Monitoring (step 6)](06-monitoring.md)
 
 ## What you deploy
 
@@ -17,7 +17,7 @@ Expose a **Data API** gateway for **`hcd-dc1`** ([DataStax docs](https://docs.da
 | `dataApi: {}` on `MissionControlCluster` | Already in lab manifests (all profiles) |
 | **`DataApi` CR** | Gateway for `hcd-dc1` — this step |
 
-Lab manifest: [`charts/hcd/data-api/data-api-dc1.yaml`](../../charts/hcd/data-api/data-api-dc1.yaml)  
+Lab manifest: [`manifests/hcd/data-api/data-api-dc1.yaml`](../manifests/hcd/data-api/data-api-dc1.yaml)  
 ClusterIP Service: **`lab-data-api-dc1-data-api-cip`** on port **30080**
 
 ## Enable gateway
@@ -28,14 +28,14 @@ ClusterIP Service: **`lab-data-api-dc1-data-api-cip`** on port **30080**
 kubectl port-forward svc/mission-control-ui -n mission-control 8080:8080
 ```
 
-1. Open `https://localhost:8080` ([Mission Control login](../02-mission-control/README.md#access-the-ui)).
+1. Open `https://localhost:8080` ([Mission Control login](02-mission-control.md#access-the-ui)).
 2. **Home** → project **`hcd`** → cluster **`hcd`** → **Connect** → **APIs**.
 3. **Add Gateway** → datacenter **`hcd-dc1`**, service type **clusterIP**, port **30080**, **1** replica.
 
 ### ⌨️ CLI
 
 ```bash
-kubectl apply -f charts/hcd/data-api/data-api-dc1.yaml
+kubectl apply -f manifests/hcd/data-api/data-api-dc1.yaml
 
 kubectl get dataapi,pods,svc -n hcd | grep data
 ```
@@ -83,7 +83,7 @@ A JSON response listing keyspaces (possibly empty) confirms the gateway works. S
 ### ⌨️ CLI
 
 ```bash
-kubectl delete -f charts/hcd/data-api/data-api-dc1.yaml
+kubectl delete -f manifests/hcd/data-api/data-api-dc1.yaml
 ```
 
 ### 🖥️ Mission Control UI

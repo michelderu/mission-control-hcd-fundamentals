@@ -8,7 +8,7 @@
 ```bash
 export PROFILE=minimal   # minimal | 3-racks | 2-dcs — match KinD
 
-kubectl apply -f charts/hcd/mission-control-cluster-${PROFILE}.yaml
+kubectl apply -f manifests/hcd/mission-control-cluster-${PROFILE}.yaml
 ```
 
 | `PROFILE` | File | Layout |
@@ -19,7 +19,7 @@ kubectl apply -f charts/hcd/mission-control-cluster-${PROFILE}.yaml
 
 | Chart | Guide |
 |-------|--------|
-| 💡 `cql/cql-connectivity-dc1.yaml` | [CQL (step 4)](../../docs/04-cql/README.md) |
-| 💡 `data-api/data-api-dc1.yaml` | [Data API (step 5)](../../docs/05-data-api/README.md) |
+| 💡 `cql/cql-connectivity-dc1.yaml` | [CQL (step 4)](../../docs/04-cql.md) |
+| 💡 `data-api/data-api-dc1.yaml` | [Data API (step 5)](../../docs/05-data-api.md) |
 
-➡️ **Install:** [`docs/03-hcd/README.md`](../../docs/03-hcd/README.md)
+➡️ **Install:** [`docs/03-hcd.md`](../../docs/03-hcd.md)

@@ -10,12 +10,13 @@ Architecture and wiring reference for this lab — not install steps.
 
 | Step | Guide | Topic |
 |------|-------|--------|
-| 1 | [`../01-kubernetes/README.md`](../01-kubernetes/README.md) | KinD cluster, topology labels |
-| 2 | [`../02-mission-control/README.md`](../02-mission-control/README.md) | Helm install, upgrade, UI |
-| 3 | [`../03-hcd/README.md`](../03-hcd/README.md) | HCD deploy, upgrade |
-| 4 | [`../04-cql/README.md`](../04-cql/README.md) | CQL console and `cqlsh` |
-| 5 | [`../05-data-api/README.md`](../05-data-api/README.md) | Data API gateway |
-| 6 | [`../06-monitoring/README.md`](../06-monitoring/README.md) | Observability, Grafana |
+| 1 | [`../01-kubernetes.md`](../01-kubernetes.md) | KinD cluster, topology labels |
+| 2 | [`../02-mission-control.md`](../02-mission-control.md) | Helm install, upgrade, UI |
+| 3 | [`../03-hcd.md`](../03-hcd.md) | HCD deploy, upgrade |
+| 4 | [`../04-cql.md`](../04-cql.md) | CQL console and `cqlsh` |
+| 5 | [`../05-data-api.md`](../05-data-api.md) | Data API gateway |
+| 6 | [`../06-monitoring.md`](../06-monitoring.md) | Observability, Grafana |
+| 7 | [`../07-backup-restore.md`](../07-backup-restore.md) | Backup and restore lab workflow |
 
 ## Deep dives
 
@@ -26,5 +27,5 @@ Architecture and wiring reference for this lab — not install steps.
 ## Config assets
 
 - [`../../kind/README.md`](../../kind/README.md) — KinD YAML profiles
-- [`../../charts/mission-control/`](../../charts/mission-control/) — Helm `values.yaml` + `overrides.yaml`
-- [`../../charts/hcd/`](../../charts/hcd/) — `MissionControlCluster` examples
+- [`../../manifests/mission-control/`](../../manifests/mission-control/) — Helm `values.yaml` + `overrides.yaml`
+- [`../../manifests/hcd/`](../../manifests/hcd/) — `MissionControlCluster` examples

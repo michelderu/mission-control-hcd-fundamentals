@@ -8,7 +8,7 @@ Create the local **KinD** cluster `mc`, apply topology labels for HCD scheduling
 - Docker, KinD, `kubectl`, and Helm on the host.
 - Cluster name **`mc`** (kubectl context `kind-mc`).
 
-➡️ **Next:** [Mission Control install (step 2)](../02-mission-control/README.md) — MC install is the same for every topology.
+➡️ **Next:** [Mission Control install (step 2)](02-mission-control.md) — MC install is the same for every topology.
 
 ## Preflight
 
@@ -20,7 +20,7 @@ Checks CLI tools and Docker.
 
 ## Topology profiles
 
-Pick **`minimal`**, **`3-racks`**, or **`2-dcs`** once — reuse the same value as **`PROFILE`** in [HCD install (step 3)](../03-hcd/README.md).
+Pick **`minimal`**, **`3-racks`**, or **`2-dcs`** once — reuse the same value as **`PROFILE`** in [HCD install (step 3)](03-hcd.md).
 
 Default: **`minimal`**. Use **`3-racks`** or **`2-dcs`** when you need more racks or datacenters.
 
@@ -36,9 +36,9 @@ Default: **`minimal`**. Use **`3-racks`** or **`2-dcs`** when you need more rack
 | `topology.kubernetes.io/region` | Datacenter (`dc1`, `dc2`) — from `scripts/apply-topology-labels.sh` |
 | `topology.kubernetes.io/zone` | Rack (`rack1`, …) |
 
-See also [`kind/README.md`](../../kind/README.md) for config file names.
+See also [`kind/README.md`](../kind/README.md) for config file names.
 
-> 📦 **Resources:** **minimal** = 3 KinD nodes · **3-racks** = 6 · **2-dcs** = 9 (most RAM). All `charts/hcd/*.yaml` use the same lab sizing per Cassandra pod (`512Mi` heap, `1280Mi` memory request, `2Gi` PVC).
+> 📦 **Resources:** **minimal** = 3 KinD nodes · **3-racks** = 6 · **2-dcs** = 9 (most RAM). All `manifests/hcd/*.yaml` use the same lab sizing per Cassandra pod (`512Mi` heap, `1280Mi` memory request, `2Gi` PVC).
 
 ## Create the cluster
 
@@ -122,4 +122,4 @@ kubectl get nodes
 kind delete cluster --name mc
 ```
 
-After delete, redo **Create the cluster** (same or new `PROFILE`), then ➡️ [Mission Control install (step 2)](../02-mission-control/README.md).
+After delete, redo **Create the cluster** (same or new `PROFILE`), then ➡️ [Mission Control install (step 2)](02-mission-control.md).

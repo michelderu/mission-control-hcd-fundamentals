@@ -1,13 +1,13 @@
 # Installing, updating, and upgrading Mission Control
 
-Install Mission Control on the KinD cluster from [Kubernetes setup (step 1)](../01-kubernetes/README.md) using **embedded MinIO**, pinned Helm values, and platform `nodeSelector`s.
+Install Mission Control on the KinD cluster from [Kubernetes setup (step 1)](01-kubernetes.md) using **embedded MinIO**, pinned Helm values, and platform `nodeSelector`s.
 
 **Prerequisites**
 
 - 📂 Run from the **repository root**.
-- KinD cluster **`mc`** is running ([Kubernetes setup](../01-kubernetes/README.md)).
+- KinD cluster **`mc`** is running ([Kubernetes setup](01-kubernetes.md)).
 
-➡️ **Next:** [HCD install (step 3)](../03-hcd/README.md) — use the same **`PROFILE`** as KinD.
+➡️ **Next:** [HCD install (step 3)](03-hcd.md) — use the same **`PROFILE`** as KinD.
 
 ## What you install
 
@@ -17,7 +17,7 @@ Install Mission Control on the KinD cluster from [Kubernetes setup (step 1)](../
 - **Loki / Mimir** with in-cluster **MinIO** (`mimir.minio.enabled: true`)
 - Operators pinned to `mission-control.datastax.com/role=platform` nodes
 
-Chart files: `charts/mission-control/values.yaml` (pinned upstream) + `charts/mission-control/overrides.yaml` (lab changes).
+Chart files: `manifests/mission-control/values.yaml` (pinned upstream) + `manifests/mission-control/overrides.yaml` (lab changes).
 
 ## Pin chart version and values
 
@@ -25,10 +25,10 @@ Chart files: `charts/mission-control/values.yaml` (pinned upstream) + `charts/mi
 export MC_CHART=oci://registry.replicated.com/mission-control/stable/mission-control
 export MC_CHART_VERSION=1.18.0
 
-helm show values "$MC_CHART" --version "$MC_CHART_VERSION" > charts/mission-control/values.yaml
+helm show values "$MC_CHART" --version "$MC_CHART_VERSION" > manifests/mission-control/values.yaml
 ```
 
-Keep environment-specific settings in `charts/mission-control/overrides.yaml` only (Dex, Loki S3/MinIO, `nodeSelector` for platform nodes).
+Keep environment-specific settings in `manifests/mission-control/overrides.yaml` only (Dex, Loki S3/MinIO, `nodeSelector` for platform nodes).
 
 **Alternative:** [DataStax sample values](https://docs.datastax.com/en/mission-control/install/_attachments/sample-values.yaml) + [install docs](https://docs.datastax.com/en/mission-control/install/install-mc-helm.html) (GCS-backed observability; this lab uses MinIO).
 
@@ -74,14 +74,14 @@ Custom password:
 echo 'your-password-here' | htpasswd -BinC 10 admin | cut -d: -f2
 ```
 
-Set under `dex.config.staticPasswords` in `charts/mission-control/overrides.yaml`.
+Set under `dex.config.staticPasswords` in `manifests/mission-control/overrides.yaml`.
 
 ## Install Mission Control
 
 ```bash
 helm install mission-control "$MC_CHART" \
-  -f charts/mission-control/values.yaml \
-  -f charts/mission-control/overrides.yaml \
+  -f manifests/mission-control/values.yaml \
+  -f manifests/mission-control/overrides.yaml \
   --namespace mission-control \
   --create-namespace \
   ${MC_CHART_VERSION:+--version "$MC_CHART_VERSION"}
@@ -149,8 +149,8 @@ After editing `overrides.yaml` or refreshing pinned `values.yaml`:
 
 ```bash
 helm upgrade mission-control "$MC_CHART" \
-  -f charts/mission-control/values.yaml \
-  -f charts/mission-control/overrides.yaml \
+  -f manifests/mission-control/values.yaml \
+  -f manifests/mission-control/overrides.yaml \
   --namespace mission-control \
   ${MC_CHART_VERSION:+--version "$MC_CHART_VERSION"}
 ```
@@ -164,9 +164,9 @@ helm uninstall mission-control -n mission-control
 kubectl delete namespace mission-control
 ```
 
-Reinstall with **Install Mission Control** above. HCD clusters in other namespaces remain until you delete them ([HCD guide](../03-hcd/README.md)).
+Reinstall with **Install Mission Control** above. HCD clusters in other namespaces remain until you delete them ([HCD guide](03-hcd.md)).
 
 ## Deeper reference
 
-- [`../concepts/deployment-structure.md`](../concepts/deployment-structure.md)
-- [`../concepts/software-components-wiring.md`](../concepts/software-components-wiring.md)
+- [`concepts/deployment-structure.md`](concepts/deployment-structure.md)
+- [`concepts/software-components-wiring.md`](concepts/software-components-wiring.md)

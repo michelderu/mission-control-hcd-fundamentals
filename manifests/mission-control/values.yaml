@@ -1557,7 +1557,7 @@ grafana:
   image:
     tag: "12.1.10"
   # This subchart security context is already secure by default
-  # https://github.com/grafana/helm-charts/blob/main/charts/grafana/values.yaml#L148-L160
+  # https://github.com/grafana/helm-manifests/blob/main/manifests/grafana/values.yaml#L148-L160
   testFramework:
     enabled: false
   sidecar:
@@ -1780,7 +1780,7 @@ kubernetes-ingress:
         prometheus: false
   kube-state-metrics:
     # This subchart is secure by default
-    # https://github.com/prometheus-community/helm-charts/blob/main/charts/kube-state-metrics/values.yaml#L306-L323
+    # https://github.com/prometheus-community/helm-manifests/blob/main/manifests/kube-state-metrics/values.yaml#L306-L323
     enabled: true
     rbac:
       # Set to false to disable the creation of cluster scoped RBAC resources
