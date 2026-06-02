@@ -8,7 +8,7 @@
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                    Option 1 Workflow                         │
+│                    Option 1 Workflow                        │
 └─────────────────────────────────────────────────────────────┘
 
 Phase 1: Restore DC1 from Backup (Declared via MedusaRestoreJob)
