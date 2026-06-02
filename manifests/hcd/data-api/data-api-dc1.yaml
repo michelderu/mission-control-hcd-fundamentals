@@ -1,7 +1,7 @@
 apiVersion: missioncontrol.datastax.com/v1alpha1
 kind: DataApi
 metadata:
-  name: lab-data-api-dc1
+  name: hcd-data-api
   namespace: hcd
 spec:
   cassandraDatacenterRef:

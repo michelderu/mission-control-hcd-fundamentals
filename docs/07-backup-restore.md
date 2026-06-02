@@ -158,6 +158,8 @@ This guide demonstrates:
 
 ## 1) Create sample data
 
+Use **`PROFILE=2-dcs`** so both datacenters exist. Replication uses Cassandra DC names (`dc1`, `dc2`), not Mission Control names (`hcd-dc1`, `hcd-dc2`).
+
 ### ⌨️ CLI
 
 ```bash
@@ -167,7 +169,8 @@ DB_PASS=$(kubectl get secret hcd-superuser -n hcd -o jsonpath='{.data.password}'
 kubectl exec -it hcd-hcd-dc1-rack1-sts-0 -n hcd -c cassandra -- cqlsh \
   -u "$DB_USER" -p "$DB_PASS" -e "
 CREATE KEYSPACE IF NOT EXISTS lab_restore
-WITH replication = {'class':'NetworkTopologyStrategy','dc1':1};
+WITH replication = {'class': 'NetworkTopologyStrategy', 'dc1': 3, 'dc2': 3}
+AND durable_writes = true;
 CREATE TABLE IF NOT EXISTS lab_restore.users (
   id int PRIMARY KEY,
   name text
@@ -177,6 +180,66 @@ INSERT INTO lab_restore.users (id, name) VALUES (2, 'bob');
 SELECT * FROM lab_restore.users;
 "
 ```
+
+Run a **full repair** on `lab_restore` through Mission Control so replicas exist in both datacenters before backup. Do not run `nodetool repair` directly on pods.
+
+### 🖥️ Mission Control UI
+
+```bash
+kubectl port-forward svc/mission-control-ui -n mission-control 8080:8080
+```
+
+1. Open `https://localhost:8080` ([Mission Control login](02-mission-control.md#access-the-ui)).
+2. **Home** → project **`hcd`** → cluster **`hcd`** → **Repairs**.
+3. Click **Run repair**.
+4. Select keyspace **`lab_restore`**.
+5. Run repair for **`hcd-dc1`**, wait until complete, then run repair for **`hcd-dc2`**.
+
+### ⌨️ CLI
+
+Use a `CassandraTask` per datacenter (Cassandra DC names `dc1` / `dc2`):
+
+```bash
+kubectl apply -f - <<EOF
+apiVersion: control.k8ssandra.io/v1alpha1
+kind: CassandraTask
+metadata:
+  name: repair-lab-restore-dc1
+  namespace: hcd
+spec:
+  datacenter:
+    name: dc1
+    namespace: hcd
+  jobs:
+    - name: repair-lab-restore
+      command: repair
+      args:
+        keyspace_name: lab_restore
+EOF
+
+kubectl apply -f - <<EOF
+apiVersion: control.k8ssandra.io/v1alpha1
+kind: CassandraTask
+metadata:
+  name: repair-lab-restore-dc2
+  namespace: hcd
+spec:
+  datacenter:
+    name: dc2
+    namespace: hcd
+  jobs:
+    - name: repair-lab-restore
+      command: repair
+      args:
+        keyspace_name: lab_restore
+EOF
+
+kubectl get cassandratask repair-lab-restore-dc1 repair-lab-restore-dc2 -n hcd -w
+```
+
+Repair is complete when both tasks show `status.conditions` with `type: Complete` and `status: "True"`.
+
+> 💡 On **`minimal`** or **`3-racks`**, use `'dc1': 1` only (no `dc2` in replication) and skip the DC2 repair task.
 
 ## 2) Start a backup in Mission Control
 
@@ -192,6 +255,29 @@ kubectl port-forward svc/mission-control-ui -n mission-control 8080:8080
 4. Click **Create backup** (or **Run backup now** if a policy already exists).
 5. Select datacenter `hcd-dc1`, then submit.
 6. Note the backup name/ID shown in the UI (used for restore in step 5).
+
+### ⌨️ CLI
+
+Create a `MedusaBackupJob` for datacenter `hcd-dc1`. The job name becomes the backup name used in restore (step 5).
+
+```bash
+BACKUP_JOB_NAME="backup-lab-$(date -u +%Y-%m-%dT%H-%M-%S | tr '[:upper:]' '[:lower:]')z"
+
+kubectl apply -f - <<EOF
+apiVersion: medusa.k8ssandra.io/v1alpha1
+kind: MedusaBackupJob
+metadata:
+  name: ${BACKUP_JOB_NAME}
+  namespace: hcd
+spec:
+  backupType: full
+  cassandraDatacenter: hcd-dc1
+EOF
+
+kubectl get medusabackupjob ${BACKUP_JOB_NAME} -n hcd -w
+```
+
+> 💡 Use `backupType: differential` only when a recent full backup already exists for this datacenter.
 
 ## 3) Track backup status (Medusa resources)
 

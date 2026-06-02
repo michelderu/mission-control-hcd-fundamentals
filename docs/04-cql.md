@@ -100,6 +100,14 @@ Mission Control deploys a **`cqlsh-pod`** per cluster in namespace **`hcd`**. On
 
 List Ready database pods: `kubectl get pods -n hcd -l cassandra.datastax.com/cluster=hcd`
 
+Helper script (recommended for lab commands):
+
+```bash
+scripts/cqlsh.sh
+scripts/cqlsh.sh --dc dc2
+scripts/cqlsh.sh --exec "DESCRIBE KEYSPACES;"
+```
+
 | `PROFILE` | Example DC1 pod | Example DC2 pod (`2-dcs`) |
 |-----------|-----------------|---------------------------|
 | `minimal`, `3-racks` | `hcd-dc1-rack1-sts-0` | — |

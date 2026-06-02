@@ -18,7 +18,7 @@ Expose a **Data API** gateway for **`hcd-dc1`** ([DataStax docs](https://docs.da
 | **`DataApi` CR** | Gateway for `hcd-dc1` — this step |
 
 Lab manifest: [`manifests/hcd/data-api/data-api-dc1.yaml`](../manifests/hcd/data-api/data-api-dc1.yaml)  
-ClusterIP Service: **`lab-data-api-dc1-data-api-cip`** on port **30080**
+ClusterIP Service: **`hcd-data-api-data-api-cip`** on port **30080**
 
 ## Enable gateway
 
@@ -47,10 +47,10 @@ kubectl get dataapi,pods,svc -n hcd | grep data
 In one terminal (leave it running):
 
 ```bash
-kubectl port-forward svc/lab-data-api-dc1-data-api-cip -n hcd 30080:30080
+kubectl port-forward svc/hcd-data-api-data-api-cip -n hcd 30080:30080
 ```
 
-In-cluster (no port-forward): `http://lab-data-api-dc1-data-api-cip.hcd.svc.cluster.local:30080`
+In-cluster (no port-forward): `http://hcd-data-api-data-api-cip.hcd.svc.cluster.local:30080`
 
 ### Credentials
 
