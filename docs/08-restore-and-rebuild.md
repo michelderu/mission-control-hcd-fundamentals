@@ -1,140 +1,163 @@
-## Method of Procedure (MOP)
+# Restore DC1 and rebuild corrupt DC2 (lab MOP)
 
-## DataStax Mission Control — Option 1: Restore DC1 and Rebuild DC2
+Lab walkthrough for **`PROFILE=2-dcs`** when **DC1** is recovered from Medusa backup and **DC2 is corrupt** (data must not be trusted). The flow follows [Rebuild a failed datacenter](https://docs.datastax.com/en/mission-control/administration/control-plane/rebuild-failed-datacenter.html), with **Phase 1** adding a Medusa restore on the survivor.
+
+**Prerequisites:** [Backup and restore](07-backup-restore.md) completed (`lab_restore` with `dc1:3, dc2:3`, valid DC1 backup).
+
+> ⚠️ **Data loss on DC2:** The official procedure **permanently deletes** all DC2 PVCs and data when you remove the datacenter from `MissionControlCluster`. Run only in a lab or when DC2 is truly unrecoverable.
+
+> ⚠️ **Pause application writers** for user keyspaces before step 2.
 
 ---
 
-## Architecture Overview
+## Scenario and name mapping
+
+| Role | Cassandra ring name | `CassandraDatacenter` CR | Notes |
+|------|---------------------|--------------------------|--------|
+| Survivor (restore target) | `dc1` | `hcd-dc1` | Authoritative after backup restore |
+| Failed (corrupt) | `dc2` | `hcd-dc2` | Removed from replication, then from manifest, then re-added empty |
+
+| Official guide step | This MOP |
+|---------------------|----------|
+| Remove replication to failed DC | Step 2 (before restore) |
+| Restore / survivor data | Phase 1: Medusa on `hcd-dc1` |
+| Remove failed DC from `MissionControlCluster` | Phase 2 step 8 |
+| Re-add datacenter | Phase 2 step 10 |
+| Repair system keyspaces on survivor | Phase 2 step 12 |
+| Replicate data (`ALTER` + `K8ssandraTask`) | Phase 2 steps 13–15 |
+
+If **all** datacenters failed, use [restore from backup](https://docs.datastax.com/en/mission-control/administration/control-plane/restore.html) instead of this MOP.
+
+---
+
+## Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                    Option 1 Workflow                        │
-└─────────────────────────────────────────────────────────────┘
-
-Phase 1: Restore DC1 from Backup (Declared via MedusaRestoreJob)
-┌──────────────┐
-│   Backup     │
-│   Storage    │
-└──────┬───────┘
-       │ Restore
-       ▼
-┌──────────────┐
-│     DC1      │  ← Restore from backup via Medusa
-│  (Primary)   │
-└──────┬───────┘
-       │
-       │ Phase 2: Rebuild & Sync DC2 (Declared via CassandraTasks)
-       │
-       ▼
-┌──────────────┐
-│     DC2      │  ← Rebuild & targeted repair orchestrated by MC
-│ (Secondary)  │
-└──────────────┘
-
+Step 2: ALTER KEYSPACE → dc1 only
+Phase 1: Medusa restore → DC1 (authoritative)
+Phase 2: Remove DC2 from MCC → empty DC2 → stream from DC1
+┌────────┐  backup   ┌────────┐  wipe &    ┌────────┐
+│ Backup │ ────────► │  DC1   │  re-add    │  DC2   │
+└────────┘           │ (dc1)  │ ─────────► │ (dc2)  │
+                     └────────┘  K8ssandraTask rebuild
 ```
 
 ---
 
 ## Prerequisites
 
-**Before Starting:**
+* Valid DC1 backup; Mission Control and namespace `hcd` healthy.
+* `kubectl` can change resources in `hcd`.
+* `cqlsh` / `ALTER KEYSPACE` via `hcd-superuser`.
+* Repo root; **`PROFILE=2-dcs`** originally applied from `manifests/hcd/mission-control-cluster-2-dcs.yaml`.
 
-* Valid backup exists for DC1 and is verified.
-* DataStax Mission Control platform is fully healthy and active.
-* `kubectl` access is configured for the target Kubernetes cluster environment.
-* Maintenance window is scheduled and stakeholders are notified.
-* Cross-datacenter network connectivity is verified between DC1 and DC2 pods.
-* Sufficient physical storage is available in both datacenters.
-
-**Required Environment Variables:**
+**Environment variables:**
 
 ```bash
-# Global Cluster Configuration
 NAMESPACE="hcd"
+CLUSTER_NAME="hcd"
 
-# DC1 Details
-DC1_DATACENTER_NAME="hcd-dc1"
-BACKUP_NAME="backup-2026-06-02t10-40-43-610z"
+DC1_DATACENTER_CR="hcd-dc1"
+DC2_DATACENTER_CR="hcd-dc2"
+SOURCE_DC="dc1"
+TARGET_DC="dc2"
+
+BACKUP_NAME="backup-2026-06-02t10-40-43-610z"   # kubectl get medusabackups -n hcd
 RESTORE_JOB_NAME="restore-dc1-$(date +%Y%m%d)"
 
-# DC2 Details
-DC2_DATACENTER_NAME="hcd-dc2"
-
-# Application Verification Variables
 YOUR_KEYSPACE="lab_restore"
 YOUR_TABLE="users"
-```
 
-Run that block in your shell before steps that use `${NAMESPACE}`, `${RESTORE_JOB_NAME}`, or heredoc manifests.
-
----
-
-## Process Overview
-
-```
-PHASE 1: RESTORE DC1 
-1. Verify Backup          →  Confirm DC1 backup exists on storage
-2. Prepare DC1            →  Verify DC1 health pre-restore
-3. Apply restore job      →  Submit MedusaRestoreJob for DC1
-4. Monitor DC1 restore    →  Track MedusaRestoreJob lifecycle
-5. Verify DC1 health      →  Confirm DC1 cluster state post-restore
-6. Validate DC1 data      →  Check DC1 data availability
-
-PHASE 2: REBUILD & SYNC DC2
-7. Prepare DC2            →  Verify DC2 cluster connectivity before rebuild
-8. Apply rebuild task     →  Submit CassandraTask rebuild from DC1
-9. Monitor DC2 rebuild    →  Track CassandraTask & system sidecar progress
-10. Verify DC2 health     →  Confirm DC2 nodes are UN
-11. Validate DC2 data     →  Check DC2 data availability & consistency
-12. Post-rebuild cleanup  →  Run node cleanup via CassandraTask
-13. Targeted sync repair  →  Run scoped keyspace repair in MC UI (TWCS safe)
-14. Final validation      →  Confirm global cluster status = UN
-
+MCC_DC1_ONLY="manifests/hcd/mission-control-cluster-dc1-only.yaml"
+MCC_2DCS="manifests/hcd/mission-control-cluster-2-dcs.yaml"
 ```
 
 ---
 
-## PHASE 1: RESTORE DC1 FROM BACKUP
+## Process overview
 
-### Step 1: Verify Backup Exists
+```
+PHASE 1 — Survivor restore (DC2 corrupt; isolate replication first)
+ 1. Verify backup
+ 2. Remove DC2 from user keyspace replication (dc1 only)
+ 3. Prepare DC1
+ 4. MedusaRestoreJob on hcd-dc1
+ 5. Monitor restore
+ 6. Verify DC1 health
+ 7. Validate DC1 data
 
-Query the Mission Control control plane to verify the target backup object exists and is tagged valid.
+PHASE 2 — Rebuild failed DC2 (DataStax failed-datacenter path)
+ 8. Remove hcd-dc2 from MissionControlCluster
+ 9. Verify DC2 resources gone; assassinate ghosts if needed
+10. Re-add hcd-dc2 (full 2-dcs manifest)
+11. Wait for DC2 pods Running
+12. Repair system keyspaces on DC1
+13. Restore replication (dc1 + dc2) on user keyspace
+14. K8ssandraTask rebuild (stream per keyspace)
+15. Monitor streaming
+16. Verify DC2 health and data
+17. Optional cleanup on DC2
+18. User keyspace repair (Mission Control / Reaper)
+19. Final validation
+```
+
+---
+
+## PHASE 1: RESTORE DC1 (DC2 isolated)
+
+### Step 1: Verify backup exists
 
 ```bash
-# List available backups within the target namespace
 kubectl get medusabackups.medusa.k8ssandra.io -n ${NAMESPACE}
-
-# Verify status details of the specific backup object
 kubectl get medusabackups.medusa.k8ssandra.io ${BACKUP_NAME} -n ${NAMESPACE} -o yaml
-
 ```
 
-**✓ Validation:** Output reflects `status: Finished` with complete node mappings.
+**✓ Validation:** Backup finished successfully.
 
-> ⚠️ **STOP** if validation fails. Do not proceed without a valid, control-plane-recognized backup state.
+> ⚠️ **STOP** if the backup is invalid.
 
 ---
 
-### Step 2: Prepare DC1 for Restore
+### Step 2: Remove corrupt DC2 from replication (before restore)
 
-Verify that the target datacenter pods are initialized so that Mission Control can orchestrate the rollback sequence.
+Per DataStax, drop the failed datacenter from **user keyspaces** on the survivor **before** restore so quorum paths and read repair cannot use corrupt DC2 replicas.
 
 ```bash
-# Verify the state of the CassandraDatacenter custom resource
-kubectl get cassandradatacenter ${DC1_DATACENTER_NAME} -n ${NAMESPACE}
+DC1_SEED_POD=$(kubectl get pods -n ${NAMESPACE} \
+  -l "cassandra.datastax.com/datacenter=${DC1_DATACENTER_CR},app.kubernetes.io/name=cassandra" \
+  --field-selector=status.phase=Running \
+  -o jsonpath='{.items[0].metadata.name}')
 
-# Capture active pods belonging to DC1
-kubectl get pods -n ${NAMESPACE} -l cassandra.datastax.com/datacenter=${DC1_DATACENTER_NAME}
+CQL_USER=$(kubectl get secret hcd-superuser -n ${NAMESPACE} -o jsonpath='{.data.username}' | base64 -d)
+CQL_PASSWD=$(kubectl get secret hcd-superuser -n ${NAMESPACE} -o jsonpath='{.data.password}' | base64 -d)
 
+kubectl exec -it ${DC1_SEED_POD} -n ${NAMESPACE} -c cassandra -- cqlsh -u ${CQL_USER} -p ${CQL_PASSWD} -e \
+  "DESCRIBE KEYSPACE ${YOUR_KEYSPACE};"
+
+kubectl exec -it ${DC1_SEED_POD} -n ${NAMESPACE} -c cassandra -- cqlsh -u ${CQL_USER} -p ${CQL_PASSWD} -e \
+  "ALTER KEYSPACE ${YOUR_KEYSPACE} WITH replication = {'class': 'NetworkTopologyStrategy', '${SOURCE_DC}': 3};"
 ```
 
-**✓ Validation:** All database pods show status `Running`.
+You may see a warning to run `nodetool repair -pr`. Ignore it when RF on `dc1` is unchanged.
+
+**✓ Validation:** `DESCRIBE KEYSPACE` lists only `dc1` in the replication strategy.
 
 ---
 
-### Step 3: Create and apply DC1 restore job
+### Step 3: Prepare DC1 for restore
 
-Submit the restore job to Mission Control. The operator orchestrates the rollout on DC1 only (DC2 is rebuilt in Phase 2).
+```bash
+kubectl get cassandradatacenter ${DC1_DATACENTER_CR} -n ${NAMESPACE}
+kubectl get pods -n ${NAMESPACE} -l cassandra.datastax.com/datacenter=${DC1_DATACENTER_CR}
+```
+
+**✓ Validation:** DC1 pods are `Running`.
+
+---
+
+### Step 4: Create and apply DC1 restore job
+
+Medusa restores **DC1 only**; it does not fix DC2.
 
 ```bash
 kubectl apply --dry-run=client -f - <<EOF
@@ -144,7 +167,7 @@ metadata:
   name: ${RESTORE_JOB_NAME}
   namespace: ${NAMESPACE}
 spec:
-  cassandraDatacenter: ${DC1_DATACENTER_NAME}
+  cassandraDatacenter: ${DC1_DATACENTER_CR}
   backup: ${BACKUP_NAME}
 EOF
 
@@ -155,202 +178,235 @@ metadata:
   name: ${RESTORE_JOB_NAME}
   namespace: ${NAMESPACE}
 spec:
-  cassandraDatacenter: ${DC1_DATACENTER_NAME}
+  cassandraDatacenter: ${DC1_DATACENTER_CR}
   backup: ${BACKUP_NAME}
 EOF
 ```
 
-**✓ Validation:** Job object created successfully (`medusarestorejob.medusa.k8ssandra.io/${RESTORE_JOB_NAME} created`). `cassandraDatacenter` must be the Mission Control DC name (`hcd-dc1`), not the Cassandra ring name (`dc1`).
+**✓ Validation:** `spec.cassandraDatacenter` is `hcd-dc1` (CR name), not `dc1`.
 
 ---
 
-### Step 4: Monitor DC1 restore progress
-
-Track execution progress directly through the custom resource state tracking fields.
+### Step 5: Monitor DC1 restore progress
 
 ```bash
-# Watch execution states
-kubectl get medusarestorejob ${RESTORE_JOB_NAME} -n ${NAMESPACE}
-
-# Inspect completion flags via explicit timeout block
+kubectl get medusarestorejob ${RESTORE_JOB_NAME} -n ${NAMESPACE} -w
 kubectl wait --for=condition=complete medusarestorejob/${RESTORE_JOB_NAME} -n ${NAMESPACE} --timeout=7200s
-
 ```
 
-**Status Progression:** `Starting` → `InProgress` → `Completed`
-
-**✓ Validation:** The resource transitions cleanly to `status: Completed`.
+**✓ Validation:** Restore job completes.
 
 ---
 
-### Step 5: Verify DC1 Cluster Health
+### Step 6: Verify DC1 cluster health
 
 ```bash
-# Verify that all DC1 nodes have completed their roll-ins and are healthy
-kubectl get cassandradatacenter ${DC1_DATACENTER_NAME} -n ${NAMESPACE}
-
-# Dynamically fetch an active seed pod from DC1 to check internal operational metrics
-DC1_SEED_POD=$(kubectl get pods -n ${NAMESPACE} \
-  -l "cassandra.datastax.com/datacenter=${DC1_DATACENTER_NAME},app.kubernetes.io/name=cassandra" \
-  --field-selector=status.phase=Running \
-  -o jsonpath='{.items[0].metadata.name}')
-
-# Run nodetool status using the active seed pod
+kubectl get cassandradatacenter ${DC1_DATACENTER_CR} -n ${NAMESPACE}
 kubectl exec -it ${DC1_SEED_POD} -n ${NAMESPACE} -c cassandra -- nodetool status
-
 ```
 
-**✓ Validation:** All nodes in DC1 display status `UN` (Up/Normal).
+**✓ Validation:** DC1 nodes are `UN`; `nodetool status` shows only datacenter `dc1` for the restored keyspace ownership (DC2 may still appear in gossip until Phase 2 tear-down).
 
 ---
 
-### Step 6: Validate DC1 Data Restored
-
-Extract credentials to query the Cassandra cluster data plane to confirm the target keyspace schemas have been accurately recovered.
+### Step 7: Validate DC1 data restored
 
 ```bash
-# Retrieve internal root superuser credentials dynamically
-CQL_SECRET_NAME=$(kubectl get secret -n ${NAMESPACE} | grep superuser | awk '{print $1}' | head -n 1)
-CQL_PASSWD=$(kubectl get secret -n ${NAMESPACE} ${CQL_SECRET_NAME} -o jsonpath='{.data.password}' | base64 -d)
-CQL_USER=$(kubectl get secret -n ${NAMESPACE} ${CQL_SECRET_NAME} -o jsonpath='{.data.username}' | base64 -d)
-
-# Verify table properties & schemas are back on DC1
 kubectl exec -it ${DC1_SEED_POD} -n ${NAMESPACE} -c cassandra -- cqlsh -u ${CQL_USER} -p ${CQL_PASSWD} -e \
   "SELECT * FROM ${YOUR_KEYSPACE}.${YOUR_TABLE} LIMIT 5;"
-
 ```
 
-**✓ Validation:** Data returns accurately with no unexpected empty sets or error states.
+**✓ Validation:** Expected rows on DC1.
 
 ---
 
-## PHASE 2: REBUILD & SYNC DC2 FROM DC1
+## PHASE 2: REBUILD CORRUPT DC2
 
-### Step 7: Prepare DC2 for Rebuild
+### Step 8: Remove failed DC2 from `MissionControlCluster`
 
-Verify that Mission Control sees DC2 as part of the wider cluster ring topology before initiating data synchronization.
+Edit `.spec.k8ssandra.cassandra.datacenters` to drop the `hcd-dc2` entry, or apply the lab survivor-only manifest:
 
 ```bash
-# Confirm DC2 resource metrics reflect an operational, ready state
-kubectl get cassandradatacenter ${DC2_DATACENTER_NAME} -n ${NAMESPACE}
-
-# Validate cross-datacenter node visibility using the DC1 seed pod
-kubectl exec -it ${DC1_SEED_POD} -n ${NAMESPACE} -c cassandra -- nodetool describecluster
-
+kubectl apply -f ${MCC_DC1_ONLY}
 ```
 
-**✓ Validation:** Output from `describecluster` correctly lists data centers `dc1` and `dc2` within the same cluster configuration.
+This removes the `CassandraDatacenter`, StatefulSets, and **data PVCs** for DC2.
+
+**✓ Validation:** Apply succeeds without error.
 
 ---
 
-### Step 8: Create and Apply CassandraTask for DC2 Rebuild
+### Step 9: Verify DC2 removal; assassinate if needed
 
-> ⚠️ **CRITICAL:** Manual execution of `nodetool rebuild` inside container environments bypasses Mission Control's orchestration lifecycle engine. This can cause severe cluster drift and topology locks. You must use the declarative `CassandraTask` CRD.
+```bash
+kubectl get cassandradatacenter,pvc,sts,pod -n ${NAMESPACE} | grep -E 'dc2|hcd-dc2' || true
+```
+
+**✓ Validation:** No DC2 `CassandraDatacenter`, STS, pods, or data PVCs remain.
+
+If DC2 nodes still appear in gossip:
+
+```bash
+kubectl exec -it ${DC1_SEED_POD} -n ${NAMESPACE} -c cassandra -- nodetool status
+# For each stale DC2 IP still listed:
+# kubectl exec -it ${DC1_SEED_POD} -n ${NAMESPACE} -c cassandra -- nodetool assassinate <dc2-pod-ip>
+```
+
+If a `CassandraDatacenter` CR remains:
+
+```bash
+kubectl delete cassandradatacenter ${DC2_DATACENTER_CR} -n ${NAMESPACE} --ignore-not-found
+```
+
+Re-check until only `dc1` appears in `nodetool status`.
+
+---
+
+### Step 10: Re-add DC2 to `MissionControlCluster`
+
+Restore the full two-datacenter manifest (same topology as the original lab deploy):
+
+```bash
+kubectl apply -f ${MCC_2DCS}
+```
+
+**✓ Validation:** `kubectl get cassandradatacenter ${DC2_DATACENTER_CR} -n ${NAMESPACE}` exists and becomes ready.
+
+---
+
+### Step 11: Wait for new DC2 pods
+
+```bash
+kubectl get cassandradatacenter,sts,pod -n ${NAMESPACE} -l cassandra.datastax.com/datacenter=${DC2_DATACENTER_CR}
+kubectl wait --for=condition=ready cassandradatacenter/${DC2_DATACENTER_CR} -n ${NAMESPACE} --timeout=1800s
+```
+
+```bash
+kubectl exec -it ${DC1_SEED_POD} -n ${NAMESPACE} -c cassandra -- nodetool status ${YOUR_KEYSPACE}
+```
+
+**✓ Validation:** All DC2 pods `Running` / `UN` with minimal load (hundreds of KiB) until replication and streaming complete.
+
+---
+
+### Step 12: Repair system keyspaces on DC1
+
+Official step before streaming user data to the empty DC:
+
+```bash
+for ks in system_auth system_distributed; do
+  for pod in $(kubectl get pods -n ${NAMESPACE} \
+    -l cassandra.datastax.com/datacenter=${DC1_DATACENTER_CR},app.kubernetes.io/name=cassandra \
+    -o jsonpath='{.items[*].metadata.name}'); do
+    echo "== ${pod} ${ks} =="
+    kubectl exec -n ${NAMESPACE} ${pod} -c cassandra -- nodetool repair -pr ${ks}
+  done
+done
+```
+
+**✓ Validation:** Each repair finishes without fatal errors.
+
+---
+
+### Step 13: Add DC2 back to user keyspace replication
+
+```bash
+kubectl exec -it ${DC1_SEED_POD} -n ${NAMESPACE} -c cassandra -- cqlsh -u ${CQL_USER} -p ${CQL_PASSWD} -e \
+  "ALTER KEYSPACE ${YOUR_KEYSPACE} WITH replication = {'class': 'NetworkTopologyStrategy', '${SOURCE_DC}': 3, '${TARGET_DC}': 3};"
+```
+
+Cassandra may warn about `nodetool repair -pr`; streaming (step 14) and repair (step 18) address consistency.
+
+**✓ Validation:** `DESCRIBE KEYSPACE` shows `dc1` and `dc2`.
+
+---
+
+### Step 14: Stream data with `K8ssandraTask`
+
+Use **`K8ssandraTask`** (operator creates `CassandraTask` children). Do not run `nodetool rebuild` manually.
 
 ```bash
 kubectl apply -f - <<EOF
 apiVersion: control.k8ssandra.io/v1alpha1
-kind: CassandraTask
+kind: K8ssandraTask
 metadata:
-  name: rebuild-dc2-from-dc1
+  name: rebuild-${TARGET_DC}-${YOUR_KEYSPACE}
   namespace: ${NAMESPACE}
 spec:
-  datacenter:
-    name: ${DC2_DATACENTER_NAME}
+  cluster:
+    name: ${CLUSTER_NAME}
     namespace: ${NAMESPACE}
-  jobs:
-    - name: rebuild-dc2
-      command: rebuild
-      args:
-        source_datacenter: dc1
+  dcConcurrencyPolicy: Forbid
+  datacenters:
+    - ${TARGET_DC}
+  template:
+    concurrencyPolicy: Allow
+    maxConcurrentPods: 1
+    jobs:
+      - name: rebuild-keyspace
+        command: rebuild
+        args:
+          source_datacenter: ${SOURCE_DC}
+          keyspace_name: ${YOUR_KEYSPACE}
 EOF
 ```
 
-**✓ Validation (apply only):** `cassandratask.control.k8ssandra.io/rebuild-dc2-from-dc1 created`. Rebuild success is validated in step 9.
+| Field | Value |
+|-------|--------|
+| `spec.datacenters` | `dc2` (Cassandra **ring** name) |
+| `args.source_datacenter` | `dc1` |
+| `args.keyspace_name` | `${YOUR_KEYSPACE}` |
+
+Repeat for each additional user keyspace.
 
 ---
 
-### Step 9: Monitor and validate DC2 rebuild
-
-Track the task until Mission Control marks every DC2 node complete.
+### Step 15: Monitor streaming
 
 ```bash
-kubectl get cassandratask rebuild-dc2-from-dc1 -n ${NAMESPACE} -w
+kubectl describe k8ssandratask rebuild-${TARGET_DC}-${YOUR_KEYSPACE} -n ${NAMESPACE}
+kubectl get k8ssandratask rebuild-${TARGET_DC}-${YOUR_KEYSPACE} -n ${NAMESPACE} -w
+kubectl get cassandratask -n ${NAMESPACE}
 ```
-
-In another terminal, check control-plane status:
-
-```bash
-kubectl get cassandratask rebuild-dc2-from-dc1 -n ${NAMESPACE} -o jsonpath='{.status.completionTime}{"\n"}{.status.succeeded}{"\n"}{range .status.conditions[*]}{.type}={.status}{"\n"}{end}'
-
-kubectl get cassandratask rebuild-dc2-from-dc1 -n ${NAMESPACE} -o go-template='{{range $pod,$s := .status.podStatuses}}{{$pod}}={{$s.status}}{{"\n"}}{{end}}'
-```
-
-Watch logs on a DC2 database pod (`app.kubernetes.io/name=cassandra`, not `cqlsh`):
 
 ```bash
 DC2_SEED_POD=$(kubectl get pods -n ${NAMESPACE} \
-  -l "cassandra.datastax.com/datacenter=${DC2_DATACENTER_NAME},app.kubernetes.io/name=cassandra" \
+  -l "cassandra.datastax.com/datacenter=${DC2_DATACENTER_CR},app.kubernetes.io/name=cassandra" \
   --field-selector=status.phase=Running \
   -o jsonpath='{.items[0].metadata.name}')
 
-kubectl logs -f ${DC2_SEED_POD} -n ${NAMESPACE} -c server-system-logger | grep -E -i "rebuild|stream|finished"
+kubectl logs -f ${DC2_SEED_POD} -n ${NAMESPACE} -c server-system-logger | grep -E -i 'rebuild|stream|finished'
 ```
 
-**✓ Validation:** Rebuild is complete when all of the following are true:
+Optional progress on DC1 ([official `netstats` pattern](https://docs.datastax.com/en/mission-control/administration/control-plane/rebuild-failed-datacenter.html)):
 
-| Check | Expected |
-|-------|----------|
-| `CassandraTask` condition | `Complete=True` |
-| `status.completionTime` | Set (not empty) |
-| `status.succeeded` | Matches DC2 node count (for example `3` on **`2-dcs`**) |
-| `status.podStatuses` | Every DC2 STS pod shows `status: COMPLETED` |
-| `kubectl get cassandratask` columns | `COMPLETED` time populated |
-| Logger (optional) | Line contains `finished rebuild` |
+```bash
+kubectl exec -it ${DC1_SEED_POD} -n ${NAMESPACE} -c cassandra -- nodetool netstats | \
+  awk '/\s+\/([0-9]{1,3}\.){3}[0-9]|Receiving/ { if (NF == 1) host=$1; else print host " : " $11/$4*100 "%\t" $11/1024/1024/1024 "/" $4/1024/1024/1024 "GB";}' | sort -n
+```
 
-If the task stays empty with no `STARTED`/`COMPLETED`, confirm `spec.datacenter.name` is **`${DC2_DATACENTER_NAME}`** (`hcd-dc2`) and `source_datacenter` is the Cassandra ring name **`dc1`**.
+**✓ Validation:** `K8ssandraTask` shows DC2 pods `COMPLETED` (for example `3` on **2-dcs**).
 
 ---
 
-### Step 10: Verify DC2 Cluster Health
-
-Verify that the newly rebuilt nodes are running healthy and fully recognized by the rest of the cluster topology.
+### Step 16: Verify DC2 health and data
 
 ```bash
-# Verify both datacenters are online and healthy from a DC2 standpoint
 kubectl exec -it ${DC2_SEED_POD} -n ${NAMESPACE} -c cassandra -- nodetool status
-
-```
-
-**✓ Validation:** All nodes across both datacenters report status `UN`.
-
----
-
-### Step 11: Validate DC2 Data Consistency
-
-Query DC2 to verify schema synchronization and that the data volume matches the primary site.
-
-```bash
-# Validate that data can be read from DC2
 kubectl exec -it ${DC2_SEED_POD} -n ${NAMESPACE} -c cassandra -- cqlsh -u ${CQL_USER} -p ${CQL_PASSWD} -e \
   "SELECT * FROM ${YOUR_KEYSPACE}.${YOUR_TABLE} LIMIT 5;"
 
-# Confirm data consistency between datacenters using LOCAL_QUORUM consistency level
 kubectl exec -it ${DC1_SEED_POD} -n ${NAMESPACE} -c cassandra -- cqlsh -u ${CQL_USER} -p ${CQL_PASSWD} -e \
   "CONSISTENCY LOCAL_QUORUM; SELECT COUNT(*) FROM ${YOUR_KEYSPACE}.${YOUR_TABLE};"
-
 kubectl exec -it ${DC2_SEED_POD} -n ${NAMESPACE} -c cassandra -- cqlsh -u ${CQL_USER} -p ${CQL_PASSWD} -e \
   "CONSISTENCY LOCAL_QUORUM; SELECT COUNT(*) FROM ${YOUR_KEYSPACE}.${YOUR_TABLE};"
-
 ```
 
-**✓ Validation:** Row counts are consistent and query results return successfully.
+**✓ Validation:** All nodes `UN`; row counts match.
 
 ---
 
-### Step 12: Run Post-Rebuild Cleanup
-
-> ⚠️ **CRITICAL:** After a datacenter rebuild, nodes retain temporary streaming data artifacts. You must execute a node cleanup operation across DC2 to recover disk space and remove redundant files.
+### Step 17: Optional — cleanup on DC2
 
 ```bash
 kubectl apply -f - <<EOF
@@ -361,7 +417,7 @@ metadata:
   namespace: ${NAMESPACE}
 spec:
   datacenter:
-    name: ${DC2_DATACENTER_NAME}
+    name: ${DC2_DATACENTER_CR}
     namespace: ${NAMESPACE}
   jobs:
     - name: cleanup-dc2
@@ -371,96 +427,45 @@ EOF
 kubectl get cassandratask cleanup-dc2-post-rebuild -n ${NAMESPACE} -w
 ```
 
-**✓ Validation:** Task updates status parameter matrix to `type: Complete`.
-
 ---
 
-### Step 13: Run Post-Rebuild Targeted Sync Repair
+### Step 18: User keyspace repair (Mission Control / Reaper)
 
-> ⚠️ **TWCS WARNING:** When the environment uses TWCS (Time Window Compaction Strategy), do not run a blind, cluster-wide `nodetool repair -pr`. Scope repairs to a single keyspace.
-
-> ⚠️ **No `CassandraTask` repair:** cass-operator in this lab does **not** support `command: repair` (`unknown job command: repair`). Use Mission Control UI for repairs. Supported `CassandraTask` commands here are **`rebuild`** and **`cleanup`** only.
-
-### 🖥️ Mission Control UI
+Do not use `CassandraTask` with `command: repair` (`unknown job command: repair` in this lab).
 
 ```bash
 kubectl port-forward svc/mission-control-ui -n mission-control 8080:8080
 ```
 
-1. Open `https://localhost:8080` ([Mission Control login](02-mission-control.md#access-the-ui)).
-2. **Home** → project **`hcd`** → cluster **`hcd`** → **Repairs**.
-3. Click **Run repair** (**Start a repair** form).
-4. Set:
-   - **Cluster**: `hcd`
-   - **Keyspace**: `lab_restore` (or `${YOUR_KEYSPACE}`)
-   - **Owner**: `admin`
-   - **Segments Per Node**: `64`
-   - **Repair Threads**: `1`
-   - **Parallelism**: `DATACENTER_AWARE`
-5. Click **Run** and monitor status in the **Repairs** list until complete.
+1. **Home** → **`hcd`** → **Repairs** → **Run repair**.
+2. **Keyspace:** `${YOUR_KEYSPACE}`; **Parallelism:** `DATACENTER_AWARE`; **Repair threads:** `1`.
 
-Parallelism option:
-SEQUENTIAL — Safest for a small lab or a busy cluster. Only one node anywhere is doing heavy validation work at a time. Good when you want minimal CPU/disk spike.
-
-PARALLEL — Fastest, but can hammer every node that holds a copy of the range at once. Use when you have headroom and want the job done quickly. Reaper’s incremental repair modes only work with this setting (not relevant to your doc 08 “sync repair” step).
-
-DATACENTER_AWARE — Typical choice for multi-DC (your 2-dcs profile). dc1 and dc2 can each have one node validating in parallel, but you don’t get “all 6 nodes in dc1 + all 6 in dc2” validating at once. That’s why doc 08 recommends it after a rebuild: you sync data across DCs without the blast radius of full PARALLEL.
-
-**✓ Validation:** Repair row in **Repairs** shows success, then confirm data in step 14 (`nodetool describering` and CQL on both DCs).
-
-Optional verification:
-
-```bash
-kubectl get reaper -n hcd
-kubectl logs -n hcd hcd-dc1-reaper-0 -c reaper --tail=50
-```
+**✓ Validation:** Repair succeeds in the UI.
 
 ---
 
-### Step 14: Final Validation — Both Datacenters Fully Operational
+### Step 19: Final validation
 
 ```bash
-# Final check of overall cluster topology from a DC1 perspective
 kubectl exec -it ${DC1_SEED_POD} -n ${NAMESPACE} -c cassandra -- nodetool status
-
-# Verify cross-datacenter replication status details
 kubectl exec -it ${DC1_SEED_POD} -n ${NAMESPACE} -c cassandra -- nodetool describering ${YOUR_KEYSPACE}
-
 ```
 
-**✓ Validation:**
-
-* All nodes across both datacenters show status `UN` (Up/Normal).
-* Datacenter endpoints and token rings are evenly distributed and active.
+Update application contact points to include DC2 ([official next steps](https://docs.datastax.com/en/mission-control/administration/control-plane/rebuild-failed-datacenter.html#next-steps)).
 
 ---
 
-## Rollback Procedure
+## Rollback
 
-### If DC1 Restore Fails:
+**Restore failed:** `kubectl delete medusarestorejob ${RESTORE_JOB_NAME} -n ${NAMESPACE}` — fix backup/Medusa, retry from step 4. If you altered replication in step 2, restore RF when aborting: `ALTER KEYSPACE … 'dc1': 3, 'dc2': 3`.
 
-```bash
-# 1. Delete the failed restore job resource object
-kubectl delete medusarestorejob ${RESTORE_JOB_NAME} -n ${NAMESPACE}
-
-# 2. Inspect control plane operator event logs to diagnose the issue
-kubectl logs -n ${NAMESPACE} -l app.kubernetes.io/name=k8ssandra-operator -c k8ssandra-operator
-
-# 3. Resolve configuration errors, update BACKUP_NAME variable, and restart from Step 3
-
-```
-
-### If DC2 Rebuild Fails:
-
-```bash
-# 1. Delete the active failed rebuild task
-kubectl delete cassandratask rebuild-dc2-from-dc1 -n ${NAMESPACE}
-
-# 2. Mission Control's operator automatically ceases streaming. Do not issue raw nodetool stop commands on pods.
-# 3. Inspect the 'server-system-logger' container logs to identify network or streaming drop causes.
-
-```
+**Rebuild failed:** `kubectl delete k8ssandratask rebuild-${TARGET_DC}-${YOUR_KEYSPACE} -n ${NAMESPACE}`. If DC2 is inconsistent, repeat Phase 2 from step 8 (tear-down and re-add).
 
 ---
 
-**End of Document**
+## See also
+
+* [Rebuild a failed datacenter](https://docs.datastax.com/en/mission-control/administration/control-plane/rebuild-failed-datacenter.html)
+* [Backup and restore](07-backup-restore.md)
+* `manifests/hcd/mission-control-cluster-2-dcs.yaml` — full topology
+* `manifests/hcd/mission-control-cluster-dc1-only.yaml` — survivor-only (Phase 2 step 8)
