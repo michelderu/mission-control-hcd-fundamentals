@@ -8,7 +8,6 @@
 |------|------|
 | `values.yaml` | Pinned upstream chart defaults (`helm show values …`) |
 | `overrides.yaml` | Lab changes: Dex, MinIO/Loki, platform `nodeSelector`s |
-| `enable-grafana.yaml` | 💡 Optional: `grafana.enabled: true` + platform `nodeSelector` |
 
 | Guide | Topic |
 |-------|--------|
